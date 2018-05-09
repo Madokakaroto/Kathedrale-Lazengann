@@ -49,7 +49,7 @@ namespace kath
 		template <typename OtherExpr, typename Otherkey>
 		friend class table_expression;
 
-		static inline constexpr int rang = Expr::rang + 1;
+		static inline constexpr int rang = expression_type::rang + 1;
 
 		table_expression(const_expression const& expr, key_type key) noexcept
 			: base_type()
@@ -69,13 +69,9 @@ namespace kath
 		template <typename Value>
 		operator Value() const
 		{
-			// push on stack
-			auto ctx = get();
-
-			stack_guard<rang> guard{ ctx };
-
-			// cast to value type
-			return stack_cast<Value>(ctx);
+			auto L = get();
+			stack_guard<rang> guard{ L };
+			return stack_cast<Value>(L);
 		}
 
 		using base_type::operator[];
@@ -84,14 +80,9 @@ namespace kath
 		template <typename OtherKey>
 		auto get(OtherKey const& key) const
 		{
-			// push base expression on stack recursively
-			auto ctx = get();
-
-			// push the current expression
-			fetch_field(ctx, key);
-
-			// return context for dfs
-			return ctx;
+			auto L = get();
+			fetch_field(L, key);
+			return L;
 		}
 
 		auto get() const
@@ -102,9 +93,9 @@ namespace kath
 		template <typename OtherKey, typename Value>
 		auto set(OtherKey const& key, Value&& value) const
 		{
-			auto ctx = get();
-			set_field(ctx, key, std::forward<Value>(value));
-			return ctx;
+			auto L = get();
+			set_field(L, key, std::forward<Value>(value));
+			return L;
 		}
 
 		template <typename Value>

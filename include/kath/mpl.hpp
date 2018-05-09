@@ -196,6 +196,7 @@ namespace kath
 	using exract_key_type_t = typename extract_key_type<Key>::type;
 }
 
+// SFINAE
 namespace kath
 {
 	template <bool Test, typename T = void>
@@ -203,4 +204,146 @@ namespace kath
 
 	template <bool Test, typename T = void>
 	using disable_if_t = typename disable_if<Test, T>::type;
+}
+
+// callable traits
+namespace kath
+{
+	namespace detail
+	{
+		// generics 
+		template <typename Callable, typename = void>
+		struct callable_traits_impl;
+
+		template <typename Callable>
+		struct callable_traits_impl<Callable, std::void_t<decltype(&Callable::operator())>>
+			: callable_traits_impl<decltype(&Callable::operator())> {};
+
+		// specialization for function
+		template <typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(Args...), void>
+		{
+			using result_type = Ret;
+			using caller_type = void;
+			using args_pack = std::tuple<Args...>;
+			using signature_type = Ret(*)(Args...);
+
+			inline static constexpr size_t arity = sizeof...(Args);
+			inline static constexpr bool is_pmf = false;
+			inline static constexpr bool has_const_qualifier = false;
+			inline static constexpr bool has_volatile_qualifier = false;
+			inline static constexpr bool has_lvalue_ref_qualifier = false;
+			inline static constexpr bool has_rvalue_ref_qualifier = false;
+		};
+
+		template <typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(*)(Args...), void> : callable_traits_impl<Ret(Args...)> {};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...), void> : callable_traits_impl<Ret(Args...)> 
+		{
+			using call_type = T;
+			using args_pack = std::tuple<Args...>;
+			using signature_type = Ret(T::*)(Args...);
+
+			inline static constexpr bool is_pmf = true;
+		};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...) &, void> : callable_traits_impl<Ret(T::*)(Args...)> 
+		{
+			using signature_type = Ret(T::*)(Args...) &;
+			inline static constexpr bool has_lvalue_ref_qualifier = true;
+		};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...) &&, void> : callable_traits_impl<Ret(T::*)(Args...)> 
+		{
+			using signature_type = Ret(T::*)(Args...) &&;
+			inline static constexpr bool has_rvalue_ref_qualifier = true;
+		};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...) const, void> : callable_traits_impl<Ret(T::*)(Args...)>  
+		{
+			using signature_type = Ret(T::*)(Args...) const;
+			inline static constexpr bool has_const_qualifier = true;
+		};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...) const &, void> : callable_traits_impl<Ret(T::*)(Args...) &> 
+		{
+			using signature_type = Ret(T::*)(Args...) const &;
+			inline static constexpr bool has_const_qualifier = true;
+		};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...) const &&, void> : callable_traits_impl<Ret(T::*)(Args...) &&> 
+		{
+			using signature_type = Ret(T::*)(Args...) const &&;
+			inline static constexpr bool has_const_qualifier = true;
+		};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...) volatile, void> : callable_traits_impl<Ret(T::*)(Args...)> 
+		{
+			using signature_type = Ret(T::*)(Args...) volatile;
+			inline static constexpr bool has_volatile_qualifier = true;
+		};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...) volatile &, void> : callable_traits_impl<Ret(T::*)(Args...) &> 
+		{
+			using signature_type = Ret(T::*)(Args...) volatile &;
+			inline static constexpr bool has_volatile_qualifier = true;
+		};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...) volatile &&, void> : callable_traits_impl<Ret(T::*)(Args...) &&> 
+		{
+			using signature_type = Ret(T::*)(Args...) volatile &&;
+			inline static constexpr bool has_volatile_qualifier = true;
+		};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...) const volatile, void> : callable_traits_impl<Ret(T::*)(Args...) const> 
+		{
+			using signature_type = Ret(T::*)(Args...) const volatile;
+			inline static constexpr bool has_volatile_qualifier = true;
+		};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...) const volatile &, void> : callable_traits_impl<Ret(T::*)(Args...) const&> 
+		{
+			using signature_type = Ret(T::*)(Args...) const volatile &;
+			inline static constexpr bool has_volatile_qualifier = true;
+		};
+
+		template <typename T, typename Ret, typename ... Args>
+		struct callable_traits_impl<Ret(T::*)(Args...) const volatile &&, void> : callable_traits_impl<Ret(T::*)(Args...) const &&> 
+		{
+			using signature_type = Ret(T::*)(Args...) const volatile &&;
+			inline static constexpr bool has_volatile_qualifier = true;
+		};
+
+	}
+
+	template <typename Callable>
+	struct callable_traits : detail::callable_traits_impl<remove_rcv_t<Callable>> {};
+}
+
+// result traits
+namespace kath
+{
+	template <typename T, typename = void>
+	struct result_size : std::integral_constant<size_t, 1> {};
+
+	template <>
+	struct result_size<void, void> : std::integral_constant<size_t, 0> {};
+
+	template <typename T>
+	struct result_size<T, std::void_t<decltype(std::tuple_size_v<T>)>> : std::tuple_size<T> {};
+
+	template <typename T>
+	inline constexpr bool result_size_v = result_size<T>::value; 
 }

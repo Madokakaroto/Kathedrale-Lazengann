@@ -52,25 +52,18 @@ namespace kath
 			}
 		}
 
-		auto get_state() const noexcept
-		{
-			return L;
-		}
-
 		template <typename Key>
-		auto get(Key const& key) const -> context
+		auto get(Key const& key) const
 		{
-			context ctx = { L };
-			fetch_global(ctx, key);
-			return ctx;
+			fetch_global(L, key);
+			return L;
 		}
 
 		template <typename Key, typename Value>
 		auto set(Key const& key, Value&& value) const
 		{
-			context ctx = { L };
-			set_global(ctx, key, std::forward<Value>(value));
-			return ctx;
+			set_global(L, key, std::forward<Value>(value));
+			return L;
 		}
 
 	private:

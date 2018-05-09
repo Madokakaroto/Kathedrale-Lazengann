@@ -1,5 +1,26 @@
 #include "kath.hpp"
 
+class foo
+{
+};
+
+class bar
+{
+	int a;
+};
+
+struct fee
+{
+};
+
+namespace test
+{
+	class foo
+	{
+		float d;
+	};
+}
+
 int main(void)
 {
 	kath::state state;
