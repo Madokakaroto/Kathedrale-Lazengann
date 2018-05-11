@@ -330,6 +330,15 @@ namespace kath
 
 	template <typename Callable>
 	struct callable_traits : detail::callable_traits_impl<remove_rcv_t<Callable>> {};
+
+	template <typename T, typename = void>
+	struct is_callable : std::is_function<T> {};
+
+	template <typename T>
+	struct is_callable<T, std::void_t<decltype(&T::operator())>> : std::true_type {};
+
+	template <typename T>
+	inline constexpr bool is_callable_v = is_callable<T>::value;
 }
 
 // result traits

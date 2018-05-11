@@ -31,5 +31,4 @@ namespace kath
 	private:
 		std::vector<std::function<int(lua_State*)>> functors_;
 	};
-
 }

@@ -49,8 +49,6 @@ namespace kath
 		template <typename OtherExpr, typename Otherkey>
 		friend class table_expression;
 
-		static inline constexpr int rang = expression_type::rang + 1;
-
 		table_expression(const_expression const& expr, key_type key) noexcept
 			: base_type()
 			, expr_(expr)
@@ -62,7 +60,7 @@ namespace kath
 		template <typename Value>
 		void operator= (Value&& value) const
 		{
-			stack_guard<rang - 1> guard{ set(std::forward<Value>(value)) };
+			set(std::forward<Value>(value));
 		}
 
 		// perform the value = "table[key_]" semantic
@@ -70,8 +68,7 @@ namespace kath
 		operator Value() const
 		{
 			auto L = get();
-			stack_guard<rang> guard{ L };
-			return stack_cast<Value>(L);
+			return stack_get<Value>(L);
 		}
 
 		using base_type::operator[];

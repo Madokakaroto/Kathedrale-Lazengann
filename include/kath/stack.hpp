@@ -1,13 +1,5 @@
 #pragma once
 
-namespace kath
-{
-	struct context
-	{
-		lua_State* L;
-	};
-}
-
 // stack push
 namespace kath 
 {
@@ -61,73 +53,92 @@ namespace kath
 	{
 		return ::lua_pushlstring(L, value.data(), value.size());
 	}
+
+	// function
+	inline static void stack_push(lua_State* L, lua_CFunction f, int n = 0)
+	{
+		::lua_pushcclosure(L, f, 0);
+	}
+
+	//light userdata
+	template <typename T>
+	inline static auto stack_push(lua_State* L, T* uobj) -> disable_if<is_c_string_v<T>>
+	{
+		::lua_pushlightuserdata(L, reinterpret_cast<void*>(uobj));
+	}
 }
 
-// statck cast
+// statck get
 namespace kath 
 {
 	template <typename T>
-	inline static auto stack_cast(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_bool_v<T>, T>
+	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_bool_v<T>, T>
 	{
 		return static_cast<T>(::lua_toboolean(L, index));
 	}
 
 	template <typename T>
-	inline static auto stack_cast(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_integral_v<T>, T>
+	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_integral_v<T>, T>
 	{
 		return static_cast<T>(::lua_tointegerx(L, index, nullptr));
 	}
 
 	template <typename T>
-	inline static auto stack_cast(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_floating_point_v<T>, T>
+	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_floating_point_v<T>, T>
 	{
 		return static_cast<T>(::lua_tonumberx(L, index, nullptr));
 	}
 
 	template <typename T>
-	inline static auto stack_cast(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_c_string_v<T>, char const*>
+	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_c_string_v<T>, char const*>
 	{
 		return ::lua_tolstring(L, index, nullptr);
 	}
 
 	template <typename T>
-	inline static auto stack_cast(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_string_buffer_v<T>, T>
+	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_string_buffer_v<T>, T>
 	{
 		size_t len { 0 };
 		auto ptr = ::lua_tolstring(L, index, &len);
 		return { ptr, len };
 	}
+	
+	template <typename T>
+	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<std::is_same_v<T, lua_CFunction>, lua_CFunction>
+	{
+		return ::lua_tocfunction(L, index);
+	}
 }
 
-// stack check cast
+// stack check get
 namespace kath 
 {
 	template <typename T>
-	inline static auto stack_check_cast(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_bool_v<T>, T>
+	inline static auto stack_check(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_bool_v<T>, T>
 	{
-		return stack_cast<T>(L, index);
+		return stack_get<T>(L, index);
 	}
 
 	template <typename T>
-	inline static auto stack_check_cast(lua_State* L, int index = -1) -> std::enable_if_t<is_integral_v<T>, T>
+	inline static auto stack_check(lua_State* L, int index = -1) -> std::enable_if_t<is_integral_v<T>, T>
 	{
 		return static_cast<T>(::luaL_checkinteger(L, index));
 	}
 
 	template <typename T>
-	inline static auto stack_check_cast(lua_State* L, int index = -1) -> std::enable_if_t<is_floating_point_v<T>, T>
+	inline static auto stack_check(lua_State* L, int index = -1) -> std::enable_if_t<is_floating_point_v<T>, T>
 	{
 		return static_cast<T>(::luaL_checknumber(L, index));
 	}
 
 	template <typename T>
-	inline static auto stack_check_cast(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_c_string_v<T>, char const*>
+	inline static auto stack_check(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_c_string_v<T>, char const*>
 	{
 		return ::luaL_checklstring(L, index, nullptr);
 	}
 
 	template <typename T>
-	inline static auto stack_check_cast(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_string_buffer_v<T>, T>
+	inline static auto stack_check(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_string_buffer_v<T>, T>
 	{
 		size_t len { 0 };
 		auto ptr = ::luaL_checklstring(L, index, &len);
@@ -135,12 +146,17 @@ namespace kath
 	}
 }
 
-// other primative stack operation
+// other stack operation
 namespace kath
 {
 	inline static void stack_pop(lua_State* L, int count = 1)
 	{
 		lua_pop(L, count);
+	}
+
+	inline static void check_type(lua_State* L, basic_type type, int index = -1)
+	{
+		::luaL_checktype(L, index, static_cast<int32_t>(index));
 	}
 }
 
@@ -156,69 +172,69 @@ namespace kath
 		}
 	}
 
-	template <typename T>
-	inline static auto fetch_global(lua_State* L, T const& key) -> std::enable_if_t<is_c_string_v<T>, data_type_t>
+	template <typename Key>
+	inline static auto fetch_global(lua_State* L, Key const& key) -> std::enable_if_t<is_c_string_v<Key>, basic_type>
 	{
-		return data_type_t{ ::lua_getglobal(L, value) };
+		return basic_type{ ::lua_getglobal(L, value) };
 	}
 
-	template <typename T>
-	inline static auto fetch_global(lua_State* L, T const& key) -> std::enable_if_t<is_c_array_string_v<T>, data_type_t>
+	template <typename Key>
+	inline static auto fetch_global(lua_State* L, Key const& key) -> std::enable_if_t<is_c_array_string_v<Key>, basic_type>
 	{
 		detail::check_char_array(key);
-		return data_type_t{ ::lua_getglobal(L, key) };
+		return basic_type{ ::lua_getglobal(L, key) };
 	}
 
-	template <typename T>
-	inline static auto fetch_global(lua_State* L, T const& key) 
-		-> std::enable_if_t<is_std_string_compatible_v<T>, data_type_t>
+	template <typename Key>
+	inline static auto fetch_global(lua_State* L, Key const& key) 
+		-> std::enable_if_t<is_std_string_compatible_v<Key>, basic_type>
 	{
-		return data_type_t{ ::lua_getglobal(L, key.c_str()) };
+		return basic_type{ ::lua_getglobal(L, key.c_str()) };
 	}
 
-	template <typename T>
-	inline static auto fetch_global(lua_State* L, T const& key) 
-		-> std::enable_if_t<is_string_view_compatible_v<T>, data_type_t>
+	template <typename Key>
+	inline static auto fetch_global(lua_State* L, Key const& key) 
+		-> std::enable_if_t<is_string_view_compatible_v<Key>, basic_type>
 	{
 		detail::check_string_view(key);
-		return data_type_t{ ::lua_getglobal(L, key.data()) };
+		return basic_type{ ::lua_getglobal(L, key.data()) };
 	}
 
-	template <typename T>
-	inline static auto fetch_field(lua_State* L, T const& key, int index = -1) 
-		-> std::enable_if_t<is_c_string_v<T>, data_type_t>
+	template <typename Key>
+	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1) 
+		-> std::enable_if_t<is_c_string_v<Key>, basic_type>
 	{
-		return data_type_t{ ::lua_getfield(L, index, key) };
+		return basic_type{ ::lua_getfield(L, index, key) };
 	}
 
-	template <typename T>
-	inline static auto fetch_field(lua_State* L, T const& key, int index = -1) 
-		-> std::enable_if_t<is_c_array_string_v<T>, data_type_t>
+	template <typename Key>
+	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1) 
+		-> std::enable_if_t<is_c_array_string_v<Key>, basic_type>
 	{
 		detail::check_char_array(key);
-		return data_type_t{ ::lua_getfield(L, index, key) };
+		return basic_type{ ::lua_getfield(L, index, key) };
 	}
 
-	template <typename T>
-	inline static auto fetch_field(lua_State* L, T const& key, int index = -1)
-		-> std::enable_if_t<is_std_string_compatible_v<T>, data_type_t>
+	template <typename Key>
+	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1)
+		-> std::enable_if_t<is_std_string_compatible_v<Key>, basic_type>
 	{
-		return data_type_t{ ::lua_getfield(L, index, key.c_str()) };
+		return basic_type{ ::lua_getfield(L, index, key.c_str()) };
 	}
 
-	template <typename T>
-	inline static auto fetch_field(lua_State* L, T const& key, int index = -1) 
-		-> std::enable_if_t<meta_or_v<is_string_view_compatible<T>, is_floating_point<T>, is_bool<T>>, data_type_t>
+	template <typename Key>
+	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1) 
+		-> std::enable_if_t<meta_or_v<is_string_view_compatible<Key>, is_floating_point<Key>, is_bool<Key>>, basic_type>
 	{
 		stack_push(L, key);
-		return data_type_t{ ::lua_gettable(L, index - 1) };
+		return basic_type{ ::lua_gettable(L, index - 1) };
 	}
 
-	template <typename T>
-	inline static auto fetch_field(lua_State* L, T const& key, int index = - 1)
-		-> std::enable_if_t<is_integral_v<T>, data_type_t>
+	template <typename Key>
+	inline static auto fetch_field(lua_State* L, Key const& key, int index = - 1)
+		-> std::enable_if_t<is_integral_v<Key>, basic_type>
 	{
-		return data_type_t{ ::lua_geti(L, index, static_cast<lua_Number>(key)) };
+		return basic_type{ ::lua_geti(L, index, static_cast<lua_Integer>(key)) };
 	}
 }
 
@@ -306,4 +322,32 @@ namespace kath
 		stack_push(L, std::forward<Value>(value));
 		::lua_settable(L, index - 2);
 	}
+}
+
+// higher level
+namespace kath
+{
+	struct gloabl_table_op : protected stack_guard
+	{
+		gloabl_table_op(lua_State* L)
+			: stack_guard(L)
+		{}
+
+		template <typename Key>
+		void fetch(Key const& key)
+		{
+			assert(this->L_);
+			fetch_global(this->L_, key);
+		}
+
+		template <typename Key, typename Value>
+		auto set(Key const& key, Value&& value) -> disable_if_t<is_callable_v<Value>>
+		{
+			assert(this->L_);
+			set_global(this->L_, key);
+		}
+
+	};
+
+	//struct 
 }

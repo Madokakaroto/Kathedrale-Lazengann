@@ -2,22 +2,25 @@
 
 namespace kath
 {
-	template<int rang>
-	class stack_guard
+	struct stack_guard
 	{
-	public:
 		stack_guard(lua_State* L)
-			: L(L)
+			: L_(L)
+			, top_(::lua_gettop(L))
+		{}
+
+		~stack_guard()
 		{
-		}
-		
-		~stack_guard() noexcept
-		{
-			if constexpr(rang > 0)
-				::lua_pop(L, rang);
+			::lua_settop(L_, top_);
 		}
 
-	private:
-		lua_State* L;
+		stack_guard(stack_guard const&) = delete;
+		stack_guard(stack_guard&&) = delete;
+
+		stack_guard& operator=(stack_guard const&) = delete;
+		stack_guard& operator=(stack_guard&&) = delete;
+	
+		lua_State*	L_;
+		int			top_;
 	};
 }
