@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <functional>
 #include <tuple>
+#include <memory>
 
 #include <boost/type_traits/function_traits.hpp>
 
