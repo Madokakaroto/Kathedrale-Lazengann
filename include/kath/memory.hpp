@@ -393,11 +393,11 @@ namespace kath
         template <typename _T, typename Pointer>
         void init_enable_ref_from_this(ref_count_ptr_alias<_T> const& rptr, Pointer ptr)
         {
-            if constexpr(detail::can_be_refered_v<Pointer>)
+            if constexpr(detail::can_be_refered_v<std::remove_pointer_t<Pointer>>)
             {
                 if(ptr && ptr->weak_ptr_.expired())
                 {
-                    ptr->weak_ptr_ = rptr;
+                    ptr->weak_ptr_ = reinterpret_cast<ref_count_ptr_alias<std::remove_const_t<_T>> const&>(rptr);
                 }
             }
         }
@@ -525,8 +525,7 @@ namespace kath
 
     public:
         using KATH_ref_enabled = T;
- 
-    protected:
+
         constexpr enable_ref_from_this() noexcept = default;
         enable_ref_from_this(enable_ref_from_this const&) noexcept = default;
         enable_ref_from_this& operator=(enable_ref_from_this const&) noexcept = default;
@@ -554,6 +553,6 @@ namespace kath
         }
 
     protected:
-        weak_ptr<T, RefCounter> weak_ptr_;
+        mutable weak_ptr<T, RefCounter> weak_ptr_;
     };
 }
