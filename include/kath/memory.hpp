@@ -8,6 +8,9 @@ namespace kath
     template <typename T, typename RefCounter>
     class weak_ptr;
 
+    template <typename T, typename RefCounter>
+    class enable_ref_from_this;
+
     namespace detail
     {
         template <typename RefCounter>
@@ -207,6 +210,15 @@ namespace kath
                 return counter_ ? counter_->use_count() : value_type{ 0 };
             }
         };
+
+        template <typename T, typename = void>
+        struct can_be_refered : std::false_type {};
+
+        template <typename T>
+        struct can_be_refered<T, std::void_t<typename T::KATH_ref_enabled>> : std::true_type {};
+
+        template <typename T>
+        inline constexpr bool can_be_refered_v = can_be_refered<T>::value;
     }
     
     class fast_refcount
@@ -257,12 +269,6 @@ namespace kath
     private:
         uint32_t users_ = 1;
         uint32_t weaks_ = 1;
-    };
-
-    template <typename T>
-    class enable_ref_from_this
-    {
-
     };
 
     template <typename T, typename RefCounter>
@@ -319,6 +325,7 @@ namespace kath
 
             assert(ptr);
             this->KATH_set_impl(ptr, new ref_counter_interface{ ptr });
+            init_enable_ref_from_this(*this, ptr);
         }
 
         ~ref_count_ptr()
@@ -380,6 +387,19 @@ namespace kath
         void swap(_T* ptr)
         {
             ref_count_ptr{ ptr }.swap(*this);
+        }
+
+    private:
+        template <typename _T, typename Pointer>
+        void init_enable_ref_from_this(ref_count_ptr_alias<_T> const& rptr, Pointer ptr)
+        {
+            if constexpr(detail::can_be_refered_v<Pointer>)
+            {
+                if(ptr && ptr->weak_ptr_.expired())
+                {
+                    ptr->weak_ptr_ = rptr;
+                }
+            }
         }
     };
 
@@ -493,5 +513,47 @@ namespace kath
         {
             return this->use_count() == 0;
         }
+    };
+
+    template <typename T, typename RefCounter>
+    class enable_ref_from_this
+    {
+        template <typename _T> using ref_count_ptr_alias = ref_count_ptr<_T, RefCounter>;
+        template <typename _T> using weak_ptr_alias = weak_ptr<_T, RefCounter>;
+        template <typename _T, typename _RefCounter>
+        friend class ref_count_ptr;
+
+    public:
+        using KATH_ref_enabled = T;
+ 
+    protected:
+        constexpr enable_ref_from_this() noexcept = default;
+        enable_ref_from_this(enable_ref_from_this const&) noexcept = default;
+        enable_ref_from_this& operator=(enable_ref_from_this const&) noexcept = default;
+        ~enable_ref_from_this() = default;
+    
+    public:
+        auto ref_from_this()
+        {
+            return ref_count_ptr_alias<T>{ weak_ptr_ };
+        }
+
+        auto ref_from_this() const
+        {
+            return ref_count_ptr_alias<std::add_const_t<T>>{ weak_ptr_ };
+        }
+
+        auto weak_from_this()
+        {
+            return weak_ptr_alias<T>{ *this };
+        }
+
+        auto weak_from_this() const
+        {
+            return weak_ptr_alias<std::add_const_t<T>>{ *this };
+        }
+
+    protected:
+        weak_ptr<T, RefCounter> weak_ptr_;
     };
 }
