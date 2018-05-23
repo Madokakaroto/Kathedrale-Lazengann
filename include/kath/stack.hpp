@@ -175,7 +175,7 @@ namespace kath
 	template <typename Key>
 	inline static auto fetch_global(lua_State* L, Key const& key) -> std::enable_if_t<is_c_string_v<Key>, basic_type>
 	{
-		return basic_type{ ::lua_getglobal(L, value) };
+		return basic_type{ ::lua_getglobal(L, key) };
 	}
 
 	template <typename Key>

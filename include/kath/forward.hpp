@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 #include <type_traits>
+#include <cstring>
 #include <string>
 #include <string_view>
 #include <vector>
