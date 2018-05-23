@@ -49,12 +49,16 @@ int main(void)
         auto ptr = new foo{};
         std::shared_ptr<foo const> sptr1{ ptr };
         std::shared_ptr<foo> sptr2{ ptr };
+        std::shared_ptr<foo const> sptr3 = sptr2;
+        //std::shared_ptr<foo> sptr4 = sptr3;
     }
 
     {
         auto ptr = new test::foo{};
-        ref_count_ptr<test::foo> ptr1{ ptr };
-        ref_count_ptr<test::foo const> ptr2{ ptr };
+        ref_count_ptr<test::foo> sptr1{ ptr };
+        ref_count_ptr<test::foo const> sptr2{ ptr };
+        ref_count_ptr<test::foo const> sptr3 = sptr1;
+        //ref_count_ptr<test::foo> sptr4 = ptr3;
     }
 
     {
