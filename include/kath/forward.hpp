@@ -12,6 +12,7 @@
 #include <functional>
 #include <tuple>
 #include <memory>
+#include <atomic>
 
 #include <boost/type_traits/function_traits.hpp>
 

@@ -271,6 +271,55 @@ namespace kath
         uint32_t weaks_ = 1;
     };
 
+    class shared_refcount
+    {
+    public:
+        using value_type = uint32_t;
+
+        void incref() noexcept
+        {
+            users_.fetch_add(1);
+        }
+
+        void incwref() noexcept
+        {
+            weaks_.fetch_add(1);
+        }
+
+        auto decref() noexcept
+        {
+            return users_.fetch_sub(1);
+        }
+
+        auto decwref() noexcept
+        {
+            return weaks_.fetch_sub(1);
+        }
+
+        auto use_count() noexcept
+        {
+            return users_.load();
+        }
+
+        auto weak_count() noexcept
+        {
+            return weaks_.load();
+        }
+
+        bool incref_nz() noexcept
+        {
+            auto users = users_.load();
+            if(0 == users)
+                return false;
+            while(!users_.compare_exchange_weak(users, users + 1));
+            return true;
+        }
+
+    private:
+        std::atomic<uint32_t>   users_ = 1;
+        std::atomic<uint32_t>   weaks_ = 1;
+    };
+
     template <typename T, typename RefCounter>
     class ref_count_ptr : public detail::ref_count_ptr_base<T, RefCounter>
     {
