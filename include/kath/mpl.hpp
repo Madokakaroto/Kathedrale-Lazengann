@@ -52,12 +52,22 @@ namespace kath
 	inline constexpr bool meta_equal_v = meta_equal<LHS, RHS>::value;
 }
 
+// SFINAE
+namespace kath
+{
+	template <bool Test, typename T = void>
+	using disable_if = std::enable_if<negative_v<std::bool_constant<Test>>, T>;
+
+	template <bool Test, typename T = void>
+	using disable_if_t = typename disable_if<Test, T>::type;
+}
+
 // basic type traits
 namespace kath
 {
 	///////
 	template <typename T>
-	using is_bool = std::is_same<T, bool>;
+	using is_bool = std::is_same<std::add_const_t<T>, bool const>;
 
 	template <typename T>
 	inline constexpr bool is_bool_v = is_bool<T>::value;
@@ -85,21 +95,34 @@ namespace kath
 
 	// c-style string is the zero-terminal string
 	template <typename T>
-	using is_c_string = meta_or<is_pointer_of<T, char>, is_pointer_of<T, char const>>;
+	struct is_c_string
+	{
+	private:
+		using type = std::add_const_t<std::remove_reference_t<T>>;
+	public:
+		static constexpr bool value = is_pointer_of_v<type, char const>;
+	};
 
 	template <typename T>
 	inline constexpr bool is_c_string_v = is_c_string<T>::value;
 
 	// char[M] or char const[N]
 	template <typename T>
-	using is_c_array_string = meta_and<
-		std::is_array<T>, 
-		meta_equal<std::rank<T>, std::integral_constant<size_t, 1>>,
-		std::is_same<std::add_const_t<std::remove_all_extents_t<T>>, char const>
-	>;
+	struct is_char_array
+	{
+	private:
+		using array_type = std::remove_reference_t<T>;
+		using element_type = std::remove_all_extents_t<array_type>;
+	public:
+		static constexpr bool value = meta_and_v<
+			std::is_array<array_type>,
+			meta_equal<std::rank<array_type>, std::integral_constant<size_t, 1>>,
+			std::is_same<std::add_const_t<element_type>, char const>
+		>;
+	};
 
 	template <typename T>
-	inline constexpr bool is_c_array_string_v = is_c_array_string<T>::value;
+	inline constexpr bool is_char_array_v = is_char_array<T>::value;
 
 	// if is a string buffer
 	template <typename T, typename = void>
@@ -109,7 +132,7 @@ namespace kath
 	struct is_string_buffer<T, std::void_t<
 		decltype(std::declval<T>().data()),
 		decltype(std::declval<T>().size()),
-		std::enable_if_t<std::is_same_v<typename T::value_type, char>>
+		std::enable_if_t<std::is_same_v<std::add_const_t<typename std::remove_reference_t<T>::value_type>, char const>>
 		>> : std::true_type {};
 
 	template <typename T>
@@ -117,40 +140,126 @@ namespace kath
 
 	// is std::string and compatible data structure
 	template <typename T, typename = void>
-	struct is_std_string_compatible : std::false_type {};
+	struct is_std_string : std::false_type {};
 
 	template<typename T>
-	struct is_std_string_compatible<T, std::void_t<
+	struct is_std_string<T, std::void_t<
 		std::enable_if_t<is_string_buffer_v<T>>,
 		decltype(std::declval<T>().c_str())
 		>> : std::true_type {};
 
 	template <typename T>
-	inline constexpr bool is_std_string_compatible_v = is_std_string_compatible<T>::value;
+	inline constexpr bool is_std_string_v = is_std_string<T>::value;
 
 	// is std::string_view and compatible data structure
 	template <typename T, typename = void>
-	struct is_string_view_compatible : std::false_type {};
+	struct is_string_view : std::false_type {};
 
 	template <typename T>
-	struct is_string_view_compatible<T, std::void_t<
+	struct is_string_view<T, std::void_t<
 		std::enable_if_t<is_string_buffer_v<T>>,
-		std::enable_if_t<std::is_trivially_destructible_v<T>>
+		std::enable_if_t<std::is_trivially_destructible_v<std::remove_reference_t<T>>>
 		>> : std::true_type {};
 
 	template <typename T>
-	inline constexpr bool is_string_view_compatible_v = is_string_view_compatible<T>::value;
+	inline constexpr bool is_string_view_v = is_string_view<T>::value;
 
 	// potential string value type in C
 	template <typename T>
 	using is_string = meta_or<
 		is_c_string<T>,
-		is_c_array_string<T>,
+		is_char_array<T>,
 		is_string_buffer<T>
 	>;
 
 	template <typename T>
 	inline constexpr bool is_string_v = is_string<T>::value;
+}
+
+// user data
+namespace kath
+{
+	namespace ext 
+	{
+		// for extention
+		template <typename T, typename = void>
+		struct is_manipulated_type : std::false_type {};
+	}
+
+	template <typename T, typename = void>
+	struct can_be_referenced_from_this : std::false_type {};
+
+	template <typename T>
+	struct can_be_referenced_from_this<T, std::void_t<
+		decltype(std::declval<T>().ref_from_this()),
+		decltype(std::declval<T>().weak_from_this())
+	>> : std::true_type {};
+
+	// primitive type
+	// 1. boolean
+	// 2. integer
+	// 3. floating point
+	// 4. string
+	template <typename T>
+	struct is_primitive_type
+	{
+	private:
+		using type = std::remove_reference_t<T>;
+	public:
+		static constexpr bool value = meta_or_v<
+			is_bool<type>,
+			is_integral<type>,
+			is_floating_point<type>,
+			is_string<type>
+		>;
+	};
+
+	template <typename T>
+	inline constexpr bool is_primitive_type_v = is_primitive_type<T>::value;
+
+	// type that will be specially treated
+	template <typename T>
+	using is_manipulated_type = ext::is_manipulated_type<T>;
+
+	template <typename T>
+	inline constexpr bool is_manipulated_type_v = is_manipulated_type<T>::value;
+
+	// type with value semantics
+	template <typename T>
+	struct is_value_type
+	{
+	private:
+		using type = std::remove_reference_t<T>;
+	public:
+		static constexpr bool value = meta_and_v<
+			negative<is_primitive_type<type>>,
+			negative<is_manipulated_type<type>>,
+			std::is_trivially_destructible<type>,
+			std::is_copy_assignable<type>,
+			std::is_copy_constructible<type>
+		>;
+	};
+
+	template <typename T>
+	inline constexpr bool value = is_value_type<T>::value;
+
+	// type with reference semantics
+	template <typename T>
+	struct is_reference_type
+	{
+	private:
+		using type = std::remove_reference_t<T>;
+	public:
+		static constexpr bool value = meta_and_v<
+			negative<is_primitive_type<type>>,
+			negative<is_manipulated_type<type>>,
+			negative<std::is_trivially_destructible<type>>,
+			can_be_referenced_from_this<type>
+		>;
+	};
+
+	template <typename T>
+	inline constexpr bool is_reference_type_v = is_reference_type<T>::value;
 }
 
 // key value type traits
@@ -177,7 +286,7 @@ namespace kath
 		};
 
 		template <typename Key>
-		struct extract_key_type_impl<Key, std::enable_if_t<is_c_array_string_v<Key>>>
+		struct extract_key_type_impl<Key, std::enable_if_t<is_char_array_v<Key>>>
 		{
 			using type = std::add_lvalue_reference_t<std::add_const_t<remove_rcv_t<Key>>>;
 		};
@@ -194,16 +303,6 @@ namespace kath
 
 	template <typename Key>
 	using exract_key_type_t = typename extract_key_type<Key>::type;
-}
-
-// SFINAE
-namespace kath
-{
-	template <bool Test, typename T = void>
-	using disable_if = std::enable_if<negative_v<std::bool_constant<Test>>, T>;
-
-	template <bool Test, typename T = void>
-	using disable_if_t = typename disable_if<Test, T>::type;
 }
 
 // callable traits
