@@ -132,7 +132,7 @@ namespace kath
 	struct is_string_buffer<T, std::void_t<
 		decltype(std::declval<T>().data()),
 		decltype(std::declval<T>().size()),
-		std::enable_if_t<std::is_same_v<std::add_const_t<typename std::remove_reference_t<T>::value_type>, char const>>
+		std::enable_if_t<std::is_same_v<std::add_const_t<typename T::value_type>, char const>>
 		>> : std::true_type {};
 
 	template <typename T>
@@ -174,6 +174,16 @@ namespace kath
 
 	template <typename T>
 	inline constexpr bool is_string_v = is_string<T>::value;
+
+	// callable
+	template <typename T, typename = void>
+	struct is_callable : std::is_function<T> {};
+
+	template <typename T>
+	struct is_callable<T, std::void_t<decltype(&T::operator())>> : std::true_type {};
+
+	template <typename T>
+	inline constexpr bool is_callable_v = is_callable<T>::value;
 }
 
 // user data
@@ -201,18 +211,12 @@ namespace kath
 	// 3. floating point
 	// 4. string
 	template <typename T>
-	struct is_primitive_type
-	{
-	private:
-		using type = std::remove_reference_t<T>;
-	public:
-		static constexpr bool value = meta_or_v<
-			is_bool<type>,
-			is_integral<type>,
-			is_floating_point<type>,
-			is_string<type>
-		>;
-	};
+	using is_primitive_type = meta_or<
+		is_bool<T>,
+		is_integral<T>,
+		is_floating_point<T>,
+		is_string<T>
+	>;
 
 	template <typename T>
 	inline constexpr bool is_primitive_type_v = is_primitive_type<T>::value;
@@ -226,37 +230,27 @@ namespace kath
 
 	// type with value semantics
 	template <typename T>
-	struct is_value_type
-	{
-	private:
-		using type = std::remove_reference_t<T>;
-	public:
-		static constexpr bool value = meta_and_v<
-			negative<is_primitive_type<type>>,
-			negative<is_manipulated_type<type>>,
-			std::is_trivially_destructible<type>,
-			std::is_copy_assignable<type>,
-			std::is_copy_constructible<type>
-		>;
-	};
+	using is_value_type = meta_and<
+		negative<is_primitive_type<T>>,
+		negative<is_callable<T>>,
+		negative<is_manipulated_type<T>>,
+		std::is_trivially_destructible<T>,
+		std::is_copy_assignable<T>,
+		std::is_copy_constructible<T>
+	>;
 
 	template <typename T>
 	inline constexpr bool value = is_value_type<T>::value;
 
 	// type with reference semantics
 	template <typename T>
-	struct is_reference_type
-	{
-	private:
-		using type = std::remove_reference_t<T>;
-	public:
-		static constexpr bool value = meta_and_v<
-			negative<is_primitive_type<type>>,
-			negative<is_manipulated_type<type>>,
-			negative<std::is_trivially_destructible<type>>,
-			can_be_referenced_from_this<type>
-		>;
-	};
+	using is_reference_type = meta_and<
+		negative<is_primitive_type<T>>,
+		negative<is_callable<T>>,
+		negative<is_manipulated_type<T>>,
+		negative<std::is_trivially_destructible<T>>,
+		can_be_referenced_from_this<T>
+	>;
 
 	template <typename T>
 	inline constexpr bool is_reference_type_v = is_reference_type<T>::value;
@@ -429,15 +423,6 @@ namespace kath
 
 	template <typename Callable>
 	struct callable_traits : detail::callable_traits_impl<remove_rcv_t<Callable>> {};
-
-	template <typename T, typename = void>
-	struct is_callable : std::is_function<T> {};
-
-	template <typename T>
-	struct is_callable<T, std::void_t<decltype(&T::operator())>> : std::true_type {};
-
-	template <typename T>
-	inline constexpr bool is_callable_v = is_callable<T>::value;
 }
 
 // result traits

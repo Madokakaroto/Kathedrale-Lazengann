@@ -24,6 +24,12 @@ namespace kath
 	template <typename T, typename RefCounter>
 	class weak_ptr; 
 
+	template <typename Func>
+	struct lua_callable;
+
+	template <typename Func>
+	struct lua_cfunctor;
+
 	template <typename Expr>
 	class base_expression;
 
