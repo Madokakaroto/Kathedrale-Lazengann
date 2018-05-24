@@ -184,6 +184,12 @@ namespace kath
 
 	template <typename T>
 	inline constexpr bool is_callable_v = is_callable<T>::value;
+
+	template <typename T>
+	using is_lua_cfunction = std::is_same<T, lua_CFunction>;
+
+	template <typename T>
+	inline constexpr bool is_lua_cfunction_v = is_lua_cfunction<T>::value;
 }
 
 // user data

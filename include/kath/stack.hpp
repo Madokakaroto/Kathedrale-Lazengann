@@ -58,16 +58,25 @@ namespace kath
 	}
 
 	template <typename Func>
-	inline static auto stack_push(lua_State* L, Func&& func) -> std::enable_if_t<is_callable_v<Func>>
+	inline static auto stack_push(lua_State* L, Func&& func) -> std::enable_if_t<is_callable_v<std::remove_reference_t<Func>>>
 	{
 		using lua_cfunctor_t = lua_cfunctor<Func>;
-		return lua_cfunctor_t::stack_push(L, std::forward<Func>(func));
+		return lua_cfunctor_t::stack_push_callable(L, std::forward<Func>(func));
 	}
 }
 
 // statck get
 namespace kath 
 {
+	namespace detail
+	{
+		template <typename T>
+		inline static auto stack_get_userdata(lua_State* L, int index = -1)
+		{
+			return reinterpret_cast<T*>(::lua_touserdata(L, index));
+		}
+	}
+
 	template <typename T>
 	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_bool_v<T>, T>
 	{
@@ -101,9 +110,16 @@ namespace kath
 	}
 	
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<std::is_same_v<T, lua_CFunction>, lua_CFunction>
+	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_lua_cfunction_v<T>, lua_CFunction>
 	{
 		return ::lua_tocfunction(L, index);
+	}
+
+	template <typename T>
+	inline static auto stack_get(lua_State* L, int index = -1) noexcept 
+		-> std::enable_if_t<meta_and_v<kath::is_callable<T>, negative<is_lua_cfunction<T>>>, T*>
+	{
+		return detail::stack_get_userdata<T>(L, index);
 	}
 }
 
@@ -129,13 +145,13 @@ namespace kath
 	}
 
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = 1) noexcept -> std::enable_if_t<is_c_string_v<T>, char const*>
+	inline static auto stack_check(lua_State* L, int index = 1) -> std::enable_if_t<is_c_string_v<T>, char const*>
 	{
 		return ::luaL_checklstring(L, index, nullptr);
 	}
 
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = 1) noexcept -> std::enable_if_t<is_string_buffer_v<T>, T>
+	inline static auto stack_check(lua_State* L, int index = 1) -> std::enable_if_t<is_string_buffer_v<T>, T>
 	{
 		size_t len { 0 };
 		auto ptr = ::luaL_checklstring(L, index, &len);

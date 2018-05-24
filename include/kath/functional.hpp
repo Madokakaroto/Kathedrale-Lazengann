@@ -51,7 +51,7 @@ namespace kath
 		static constexpr size_t arity = callable_traits_t::arity;
 
 	public:
-		static void stack_push(lua_State* L, Func func)
+		static void stack_push_callable(lua_State* L, Func func)
 		{
 			stack_push_impl(L, std::forward<function_type>(func));
 		}
@@ -82,7 +82,9 @@ namespace kath
 
 		static int invoke(lua_State* L)
 		{
-			return 0;
+			using upvalue_placeholders::_1;
+			auto callable = stack_get<function_type>(L, _1);
+			return invoke_impl<result_type>(L, *callable);
 		}
 
 		static void stack_push_impl(lua_State* L, lua_CFunction f)
@@ -95,7 +97,7 @@ namespace kath
 		{
 			detail::stack_push_userdata(L, std::forward<F>(f));
 
-			// TODO ... metatable
+			// TODO ... metatable for destructor
 
 			::lua_pushcclosure(L, &lua_cfunctor::invoke, 1);
 		}
