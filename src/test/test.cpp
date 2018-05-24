@@ -1,6 +1,7 @@
+#include <iostream>
 #include <kath.hpp>
 
-class foo : std::enable_shared_from_this<foo>
+class foo : public std::enable_shared_from_this<foo>
 {
 public:
 	void operator() ()
@@ -34,36 +35,51 @@ namespace test
 template <typename T>
 using ref_count_ptr = kath::ref_count_ptr<T, kath::fast_refcount>;
 
+template <typename T>
+using weak_ptr = kath::weak_ptr<T, kath::fast_refcount>;
+
 int main(void)
 {
+    try {
 	kath::state state;
 	state["key"] = 1024;
 	int a = state["key"];
-	
-    {
-        auto ptr = new foo const{};
-        std::shared_ptr<foo const> sptr{ ptr };
-    }
-    
+
+    std::cout << "a = " << a << std::endl;
+
+	std::cout<< "Hello ...."  << std::endl;
+
     {
         auto ptr = new foo{};
-        std::shared_ptr<foo const> sptr1{ ptr };
-        std::shared_ptr<foo> sptr2{ ptr };
-        std::shared_ptr<foo const> sptr3 = sptr2;
-        //std::shared_ptr<foo> sptr4 = sptr3;
+        std::shared_ptr<foo> sptr1{ ptr };
+        std::shared_ptr<foo const> sptr2 = sptr1;
+        auto sptr3 = ptr->shared_from_this();
+        auto wptr = ptr->weak_from_this();
     }
 
     {
+        auto ptr = new foo const{};
+        std::shared_ptr<foo const> sptr{ ptr };
+        auto wptr = ptr->weak_from_this();
+    }    
+    
+    {
         auto ptr = new test::foo{};
         ref_count_ptr<test::foo> sptr1{ ptr };
-        ref_count_ptr<test::foo const> sptr2{ ptr };
-        ref_count_ptr<test::foo const> sptr3 = sptr1;
-        //ref_count_ptr<test::foo> sptr4 = ptr3;
     }
 
     {
         auto ptr = new test::foo const{};
-        ref_count_ptr<test::foo const> ptr2{ ptr };
+        ref_count_ptr<test::foo const> rptr1{ ptr };
+        auto rptr2 = ptr->ref_from_this();
+        auto wptr = ptr->weak_from_this();
+    }
+
+    std::cout << "End...." << std::endl;
+    }
+    catch(std::exception const& e)
+    {
+        std::cout << e.what() << std::endl;
     }
 	return 0;
 }

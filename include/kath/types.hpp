@@ -15,8 +15,8 @@ namespace kath
 		thread = LUA_TTHREAD,
 	};
 
-	inline constexpr struct nil_t {} nil;
+	inline constexpr struct nil_t {} nil{};
 
-	inline constexpr struct global_table_tag_t {}  global_table_tag;
-	inline constexpr struct normal_table_tag_t {} normal_table_tag;
+	inline constexpr struct global_table_tag_t {}  global_table_tag{};
+	inline constexpr struct normal_table_tag_t {} normal_table_tag{};
 }
