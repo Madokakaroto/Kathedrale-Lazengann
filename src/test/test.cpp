@@ -68,8 +68,9 @@ int main(void)
         std::cout << e.what() << std::endl;
     }
 
-    std::cout << kath::can_be_referenced_from_this<test::bar>::value << std::endl;
-    std::cout << kath::can_be_referenced_from_this<test::foo>::value << std::endl;
+    // test compile
+    lua_State* L = nullptr;
+    kath::stack_push(L, [](int a, int b){ return a + b; });
 
 	return 0;
 }

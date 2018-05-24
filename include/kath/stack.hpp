@@ -5,14 +5,23 @@ namespace kath
 {
 	namespace detail
 	{
-		template<typename T>
-		inline static size_t check_char_array(T const& value)
+		template <typename T>
+		inline static void stack_push_userdata(lua_State* L, T&& t)
 		{
-			constexpr size_t len = std::extent_v<T> - 1;
-			assert('\0' == value[len]);
-			return len;
+			using value_type = std::remove_cv_t<std::remove_reference_t<T>>;
+			auto ptr = lua_newuserdata(L, sizeof(value_type));
+			new (ptr) value_type{ std::forward<T>(t) };
+		}
+
+		template <typename T, typename ... Args>
+		inline static void stack_emplace_userdata(lua_State* L, Args&& ... args)
+		{
+			using value_type = std::remove_cv_t<std::remove_reference_t<T>>;
+			auto ptr = lua_newuserdata(L, sizeof(value_type)); 
+			new (ptr) value_type{ std::forward<Args>(args)... };
 		}
 	}
+
 	inline static void stack_push(lua_State* L, nil_t = nil)
 	{
 		::lua_pushnil(L);
@@ -36,13 +45,8 @@ namespace kath
 	}
 
 	template <typename T>
-	inline static auto stack_push(lua_State* L, T const& value) -> std::enable_if_t<is_c_string_v<T>, char const*>
-	{
-		return ::lua_pushstring(L, value);
-	}
-
-	template <typename T>
-	inline static auto stack_push(lua_State* L, T const& value) -> std::enable_if_t<is_char_array_v<T>, char const*>
+	inline static auto stack_push(lua_State* L, T const& value) 
+		-> std::enable_if_t<meta_or_v<is_c_string<T>, is_char_array_v<T>>, char const*>
 	{
 		return ::lua_pushstring(L, value);
 	}
@@ -53,10 +57,11 @@ namespace kath
 		return ::lua_pushlstring(L, value.data(), value.size());
 	}
 
-	// function
-	inline static void stack_push(lua_State* L, lua_CFunction f, int n = 0)
+	template <typename Func>
+	inline static auto stack_push(lua_State* L, Func&& func) -> std::enable_if_t<is_callable_v<Func>>
 	{
-		::lua_pushcclosure(L, f, 0);
+		using lua_cfunctor_t = lua_cfunctor<Func>;
+		return lua_cfunctor_t::stack_push(L, std::forward<Func>(func));
 	}
 }
 
@@ -173,7 +178,6 @@ namespace kath
 	template <typename Key>
 	inline static auto fetch_global(lua_State* L, Key const& key) -> std::enable_if_t<is_char_array_v<Key>, basic_type>
 	{
-		detail::check_char_array(key);
 		return basic_type{ ::lua_getglobal(L, key) };
 	}
 
@@ -203,7 +207,6 @@ namespace kath
 	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1) 
 		-> std::enable_if_t<is_char_array_v<Key>, basic_type>
 	{
-		detail::check_char_array(key);
 		return basic_type{ ::lua_getfield(L, index, key) };
 	}
 
@@ -242,7 +245,6 @@ namespace kath
 	template <typename Key>
 	auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_char_array_v<Key>>
 	{
-		detail::check_char_array(key);
 		::lua_setglobal(L, key);
 	}
 
@@ -275,7 +277,6 @@ namespace kath
 	template <typename Key>
 	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_char_array_v<Key>>
 	{
-		detail::check_char_array(key);
 		::lua_setfield(L, index, key);
 	}
 
