@@ -38,6 +38,72 @@ namespace kath
 	}
 }
 
+// bind
+namespace kath
+{
+	namespace detail
+	{
+		struct bind_tag_unknown{};
+		struct bind_tag_pmf{};
+		struct bind_tag_pmd{};
+		struct bind_tag_callable{};
+
+		template <typename T>
+		inline static constexpr auto get_bind_tag() noexcept
+		{
+			using type = std::remove_reference_t<T>;
+
+			if constexpr(std::is_member_function_pointer_v<type>)
+			{
+				return bind_tag_pmf{};
+			}
+			else if constexpr(std::is_member_object_pointer_v<type>)
+			{
+				return bind_tag_pmd{};
+			}
+			else if constexpr(is_callable_v<type>)
+			{
+				return bind_tag_callable{};
+			}
+			else 
+			{
+				return bind_tag_unknown{};
+			}
+		}
+
+		template <typename Tag>
+		struct bind_helper;
+
+		template <>
+		struct bind_helper<bind_tag_unknown>;
+
+		template <>
+		struct bind_helper<bind_tag_pmf>
+		{
+
+		};
+
+		template <>
+		struct bind_helper<bind_tag_pmd>
+		{
+
+		};
+
+		template <>
+		struct bind_helper<bind_tag_callable>
+		{
+
+		};
+	}
+
+	template <typename Func, typename ... Args>
+	inline static auto bind(Func&& f, Args&& ... args)
+	{
+		
+	}
+}
+
+
 // lua_cfunctor
 namespace kath
 {
