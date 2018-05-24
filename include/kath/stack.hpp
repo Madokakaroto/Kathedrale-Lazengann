@@ -44,8 +44,7 @@ namespace kath
 	template <typename T>
 	inline static auto stack_push(lua_State* L, T const& value) -> std::enable_if_t<is_c_array_string_v<T>, char const*>
 	{
-		auto len = detail::check_char_array(value);
-		return ::lua_pushlstring(L, value, len);
+		return ::lua_pushstring(L, value);
 	}
 
 	template <typename T>
@@ -58,13 +57,6 @@ namespace kath
 	inline static void stack_push(lua_State* L, lua_CFunction f, int n = 0)
 	{
 		::lua_pushcclosure(L, f, 0);
-	}
-
-	//light userdata
-	template <typename T>
-	inline static auto stack_push(lua_State* L, T* uobj) -> disable_if<is_c_string_v<T>>
-	{
-		::lua_pushlightuserdata(L, reinterpret_cast<void*>(uobj));
 	}
 }
 
@@ -114,31 +106,31 @@ namespace kath
 namespace kath 
 {
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_bool_v<T>, T>
+	inline static auto stack_check(lua_State* L, int index = 1) noexcept -> std::enable_if_t<is_bool_v<T>, T>
 	{
 		return stack_get<T>(L, index);
 	}
 
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = -1) -> std::enable_if_t<is_integral_v<T>, T>
+	inline static auto stack_check(lua_State* L, int index = 1) -> std::enable_if_t<is_integral_v<T>, T>
 	{
 		return static_cast<T>(::luaL_checkinteger(L, index));
 	}
 
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = -1) -> std::enable_if_t<is_floating_point_v<T>, T>
+	inline static auto stack_check(lua_State* L, int index = 1) -> std::enable_if_t<is_floating_point_v<T>, T>
 	{
 		return static_cast<T>(::luaL_checknumber(L, index));
 	}
 
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_c_string_v<T>, char const*>
+	inline static auto stack_check(lua_State* L, int index = 1) noexcept -> std::enable_if_t<is_c_string_v<T>, char const*>
 	{
 		return ::luaL_checklstring(L, index, nullptr);
 	}
 
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_string_buffer_v<T>, T>
+	inline static auto stack_check(lua_State* L, int index = 1) noexcept -> std::enable_if_t<is_string_buffer_v<T>, T>
 	{
 		size_t len { 0 };
 		auto ptr = ::luaL_checklstring(L, index, &len);
