@@ -14,8 +14,6 @@
 #include <memory>
 #include <atomic>
 
-#include <boost/type_traits/function_traits.hpp>
-
 namespace kath
 {
 	template <typename T, typename RefCounter>
