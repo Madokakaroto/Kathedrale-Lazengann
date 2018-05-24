@@ -41,27 +41,13 @@ using weak_ptr = kath::weak_ptr<T, kath::fast_refcount>;
 int main(void)
 {
     try {
-	kath::state state;
+	/*kath::state state;
 	state["key"] = 1024;
-	int a = state["key"];
+	int a = state["key"];*/
 
-    std::cout << "a = " << a << std::endl;
+    //std::cout << "a = " << a << std::endl;
 
-	std::cout<< "Hello ...."  << std::endl;
-
-    {
-        auto ptr = new foo{};
-        std::shared_ptr<foo> sptr1{ ptr };
-        std::shared_ptr<foo const> sptr2 = sptr1;
-        auto sptr3 = ptr->shared_from_this();
-        auto wptr = ptr->weak_from_this();
-    }
-
-    {
-        auto ptr = new foo const{};
-        std::shared_ptr<foo const> sptr{ ptr };
-        auto wptr = ptr->weak_from_this();
-    }    
+	std::cout<< "Hello ...."  << std::endl; 
     
     {
         auto ptr = new test::foo{};
@@ -81,5 +67,9 @@ int main(void)
     {
         std::cout << e.what() << std::endl;
     }
+
+    std::cout << kath::can_be_referenced_from_this<test::bar>::value << std::endl;
+    std::cout << kath::can_be_referenced_from_this<test::foo>::value << std::endl;
+
 	return 0;
 }

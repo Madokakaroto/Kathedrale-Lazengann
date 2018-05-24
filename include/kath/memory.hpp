@@ -159,13 +159,13 @@ namespace kath
             template <typename _T>
             void KATH_weak_construct_from(base_ptr_alias<_T> const& other)
             {
-                /*if(other.counter_)
+                if(other.counter_)
                 {
                     other.counter_->incwref();
                 }
 
-                //ptr_ = other.ptr_;
-                counter_ = other.counter_;*/
+                ptr_ = other.ptr_;
+                counter_ = other.counter_;
             }
 
             template <typename _T>
@@ -539,7 +539,7 @@ namespace kath
         }
 
     public: // public interface
-        auto lock() const
+        auto lock() const noexcept
         {
             using ref_count_ptr_t = ref_count_ptr<T, RefCounter>;
 

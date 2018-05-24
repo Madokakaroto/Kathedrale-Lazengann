@@ -42,7 +42,7 @@ namespace kath
 	}
 
 	template <typename T>
-	inline static auto stack_push(lua_State* L, T const& value) -> std::enable_if_t<is_c_array_string_v<T>, char const*>
+	inline static auto stack_push(lua_State* L, T const& value) -> std::enable_if_t<is_char_array_v<T>, char const*>
 	{
 		return ::lua_pushstring(L, value);
 	}
@@ -171,7 +171,7 @@ namespace kath
 	}
 
 	template <typename Key>
-	inline static auto fetch_global(lua_State* L, Key const& key) -> std::enable_if_t<is_c_array_string_v<Key>, basic_type>
+	inline static auto fetch_global(lua_State* L, Key const& key) -> std::enable_if_t<is_char_array_v<Key>, basic_type>
 	{
 		detail::check_char_array(key);
 		return basic_type{ ::lua_getglobal(L, key) };
@@ -179,14 +179,14 @@ namespace kath
 
 	template <typename Key>
 	inline static auto fetch_global(lua_State* L, Key const& key) 
-		-> std::enable_if_t<is_std_string_compatible_v<Key>, basic_type>
+		-> std::enable_if_t<is_std_string_v<Key>, basic_type>
 	{
 		return basic_type{ ::lua_getglobal(L, key.c_str()) };
 	}
 
 	template <typename Key>
 	inline static auto fetch_global(lua_State* L, Key const& key) 
-		-> std::enable_if_t<is_string_view_compatible_v<Key>, basic_type>
+		-> std::enable_if_t<is_string_view_v<Key>, basic_type>
 	{
 		detail::check_string_view(key);
 		return basic_type{ ::lua_getglobal(L, key.data()) };
@@ -201,7 +201,7 @@ namespace kath
 
 	template <typename Key>
 	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1) 
-		-> std::enable_if_t<is_c_array_string_v<Key>, basic_type>
+		-> std::enable_if_t<is_char_array_v<Key>, basic_type>
 	{
 		detail::check_char_array(key);
 		return basic_type{ ::lua_getfield(L, index, key) };
@@ -209,14 +209,14 @@ namespace kath
 
 	template <typename Key>
 	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1)
-		-> std::enable_if_t<is_std_string_compatible_v<Key>, basic_type>
+		-> std::enable_if_t<is_std_string_v<Key>, basic_type>
 	{
 		return basic_type{ ::lua_getfield(L, index, key.c_str()) };
 	}
 
 	template <typename Key>
 	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1) 
-		-> std::enable_if_t<meta_or_v<is_string_view_compatible<Key>, is_floating_point<Key>, is_bool<Key>>, basic_type>
+		-> std::enable_if_t<meta_or_v<is_string_view<Key>, is_floating_point<Key>, is_bool<Key>>, basic_type>
 	{
 		stack_push(L, key);
 		return basic_type{ ::lua_gettable(L, index - 1) };
@@ -240,20 +240,20 @@ namespace kath
 	}
 
 	template <typename Key>
-	auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_c_array_string_v<Key>>
+	auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_char_array_v<Key>>
 	{
 		detail::check_char_array(key);
 		::lua_setglobal(L, key);
 	}
 
 	template <typename Key>
-	auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_std_string_compatible_v<Key>>
+	auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_std_string_v<Key>>
 	{
 		::lua_setglobal(L, key.c_str());
 	}
 
 	template <typename Key>
-	auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_string_view_compatible_v<Key>>
+	auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_string_view_v<Key>>
 	{
 		detail::check_string_view(key);
 		::lua_setglobal(L, key.data());
@@ -273,20 +273,20 @@ namespace kath
 	}
 
 	template <typename Key>
-	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_c_array_string_v<Key>>
+	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_char_array_v<Key>>
 	{
 		detail::check_char_array(key);
 		::lua_setfield(L, index, key);
 	}
 
 	template <typename Key>
-	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_std_string_compatible_v<Key>>
+	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_std_string_v<Key>>
 	{
 		::lua_setfield(L, index, key.c_str());
 	}
 
 	template <typename Key>
-	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_string_view_compatible_v<Key>>
+	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_string_view_v<Key>>
 	{
 		detail::check_string_view(key);
 		::lua_setfield(L, index, key.data());
