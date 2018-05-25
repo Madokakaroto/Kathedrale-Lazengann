@@ -185,11 +185,28 @@ namespace kath
 	template <typename T>
 	inline constexpr bool is_callable_v = is_callable<T>::value;
 
+	// is lua_CFuntion type
 	template <typename T>
 	using is_lua_cfunction = std::is_same<T, lua_CFunction>;
 
 	template <typename T>
 	inline constexpr bool is_lua_cfunction_v = is_lua_cfunction<T>::value;
+
+	// is smart pointer
+	template <typename T, typename = void>
+	struct is_smart_pointer : std::false_type {};
+
+	template <typename T>
+	struct is_smart_pointer<T, std::void_t<
+		typename T::element_type,
+		decltype(&T::operator->),
+		decltype(&T::operator*),
+		decltype(std::declval<T>().reset()),
+		decltype(std::declval<T>().get())
+	>> : std::true_type {};
+
+	template <typename T>
+	static constexpr bool is_smart_pointer_v = is_smart_pointer<T>::value;
 }
 
 // user data
@@ -316,7 +333,10 @@ namespace kath
 
 		template <typename Callable>
 		struct callable_traits_impl<Callable, std::void_t<decltype(&Callable::operator())>>
-			: callable_traits_impl<decltype(&Callable::operator())> {};
+			: callable_traits_impl<decltype(&Callable::operator())> 
+		{
+			inline static constexpr bool is_pmf = false;
+		};
 
 		// specialization for function
 		template <typename Ret, typename ... Args>
@@ -341,7 +361,7 @@ namespace kath
 		template <typename T, typename Ret, typename ... Args>
 		struct callable_traits_impl<Ret(T::*)(Args...), void> : callable_traits_impl<Ret(Args...)> 
 		{
-			using call_type = T;
+			using caller_type = T;
 			using args_pack = std::tuple<Args...>;
 			using signature_type = Ret(T::*)(Args...);
 
