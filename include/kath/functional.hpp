@@ -80,19 +80,40 @@ namespace kath
 		template <>
 		struct bind_helper<bind_tag_pmf>
 		{
-
+            //template <typename Pmd, typename ... Args>
+            //auto operator()(Pmd pmf, )
 		};
 
 		template <>
 		struct bind_helper<bind_tag_pmd>
 		{
-
+            
 		};
 
 		template <>
 		struct bind_helper<bind_tag_callable>
 		{
+            template <typename Func, typename ... Args>
+            decltype(auto) operator() (Func&& func, Args&& ... args)
+            {
+                using callable_traits_t = callable_traits<Func>;
 
+                if constexpr(sizeof...(Args) == 0)
+                {
+                    return func;
+                }
+                else
+                {
+                    static_assert(sizeof...(Args) == callable_traits_t::arity, "Parametres number not match!");
+                }
+            }
+
+        private:
+            template <typename Func, typename Tuple>
+            auto bind_impl(Func&& func, Tuple&& tuple)
+            {
+
+            }
 		};
 	}
 
