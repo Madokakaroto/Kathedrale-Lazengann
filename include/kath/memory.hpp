@@ -581,24 +581,35 @@ namespace kath
         ~enable_ref_from_this() = default;
     
     public:
-        auto ref_from_this()
+        // TODO
+        //auto ref_from_this()
+        //{
+        //    return ref_count_ptr_alias<T>{ weak_ptr_ };
+        //}
+
+        //auto ref_from_this() const
+        //{
+        //    return ref_count_ptr_alias<std::add_const_t<T>>{ weak_ptr_ };
+        //}
+
+        auto ref_from_this() const
         {
             return ref_count_ptr_alias<T>{ weak_ptr_ };
         }
 
-        auto ref_from_this() const
-        {
-            return ref_count_ptr_alias<std::add_const_t<T>>{ weak_ptr_ };
-        }
+        //auto weak_from_this()
+        //{
+        //    return weak_ptr_alias<T>{ weak_ptr_ };
+        //}
 
-        auto weak_from_this()
-        {
-            return weak_ptr_alias<T>{ weak_ptr_ };
-        }
+        //auto weak_from_this() const
+        //{
+        //    return weak_ptr_alias<T const>{ weak_ptr_ };
+        //}
 
         auto weak_from_this() const
         {
-            return weak_ptr_alias<T const>{ weak_ptr_ };
+            return weak_ptr_alias<T>{ weak_ptr_ };
         }
 
     protected:

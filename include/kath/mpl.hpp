@@ -263,7 +263,7 @@ namespace kath
 	>;
 
 	template <typename T>
-	inline constexpr bool value = is_value_type<T>::value;
+	inline constexpr bool is_value_type_v = is_value_type<T>::value;
 
 	// type with reference semantics
 	template <typename T>
@@ -277,6 +277,14 @@ namespace kath
 
 	template <typename T>
 	inline constexpr bool is_reference_type_v = is_reference_type<T>::value;
+
+	template <typename T>
+	using is_userdata_type = meta_or<
+		is_value_type<T>, is_reference_type<T>
+	>;
+
+	template <typename T>
+	inline constexpr bool is_userdata_type_v = is_userdata_type<T>::value;
 }
 
 // key value type traits
