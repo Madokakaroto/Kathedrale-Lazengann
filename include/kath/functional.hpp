@@ -48,6 +48,8 @@ namespace kath
 	{
 		return func_detail::bind_impl(std::forward<Func>(f), std::forward<Args>(args)...);
 	}
+
+	
 }
 
 

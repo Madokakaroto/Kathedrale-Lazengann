@@ -57,12 +57,28 @@ namespace kath
 		return ::lua_pushlstring(L, value.data(), value.size());
 	}
 
-	template <typename Func>
-	inline static auto stack_push(lua_State* L, Func&& func) -> std::enable_if_t<is_callable_v<std::remove_reference_t<Func>>>
+	template <typename T>
+	inline static auto stack_push(lua_State* L, T&& t) -> std::enable_if_t<is_callable_v<std::remove_reference_t<T>>>
 	{
-		using lua_cfunctor_t = lua_cfunctor<Func>;
-		return lua_cfunctor_t::stack_push_callable(L, std::forward<Func>(func));
+		using lua_cfunctor_t = lua_cfunctor<T>;
+		return lua_cfunctor_t::stack_push_callable(L, std::forward<T>(t));
 	}
+
+	template <typename T>
+	inline static auto stack_push(lua_State* L, T&& t) -> std::enable_if_t<is_value_type_v<std::remove_reference_t<T>>>
+	{
+		detail::stack_push_userdata(L, std::forward<T>(t));
+		// TODO ... set metatable
+	}
+
+	template <typename T>
+	inline static auto stack_push(lua_State* L, T&& t) -> std::enable_if_t<is_reference_type_v<std::remove_reference_t<T>>>
+	{
+		auto ref_ptr = t.ref_from_this();
+		detail::stack_push_userdata(L, std::move(ref_ptr));
+		// TODO ... set metatable
+	}
+
 }
 
 // statck get
@@ -121,41 +137,55 @@ namespace kath
 	{
 		return detail::stack_get_userdata<T>(L, index);
 	}
+
+	template <typename T>
+	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_userdata_type_v<T>, T*>
+	{
+		return detail::stack_get_userdata<T>(L, index);
+	}
 }
 
 // stack check get
 namespace kath 
 {
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = 1) noexcept -> std::enable_if_t<is_bool_v<T>, T>
+	inline static auto stack_check(lua_State* L, int arg = 1) noexcept -> std::enable_if_t<is_bool_v<T>, T>
 	{
-		return stack_get<T>(L, index);
+		return stack_get<T>(L, arg);
 	}
 
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = 1) -> std::enable_if_t<is_integral_v<T>, T>
+	inline static auto stack_check(lua_State* L, int arg = 1) -> std::enable_if_t<is_integral_v<T>, T>
 	{
-		return static_cast<T>(::luaL_checkinteger(L, index));
+		return static_cast<T>(::luaL_checkinteger(L, arg));
 	}
 
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = 1) -> std::enable_if_t<is_floating_point_v<T>, T>
+	inline static auto stack_check(lua_State* L, int arg = 1) -> std::enable_if_t<is_floating_point_v<T>, T>
 	{
-		return static_cast<T>(::luaL_checknumber(L, index));
+		return static_cast<T>(::luaL_checknumber(L, arg));
 	}
 
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = 1) -> std::enable_if_t<is_c_string_v<T>, char const*>
+	inline static auto stack_check(lua_State* L, int arg = 1) -> std::enable_if_t<is_c_string_v<T>, char const*>
 	{
-		return ::luaL_checklstring(L, index, nullptr);
+		return ::luaL_checklstring(L, arg, nullptr);
 	}
 
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int index = 1) -> std::enable_if_t<is_string_buffer_v<T>, T>
+	inline static auto stack_check(lua_State* L, int arg = 1) -> std::enable_if_t<is_string_buffer_v<T>, T>
 	{
 		size_t len { 0 };
-		auto ptr = ::luaL_checklstring(L, index, &len);
+		auto ptr = ::luaL_checklstring(L, arg, &len);
 		return { ptr, len };
+	}
+
+	template <typename T>
+	inline static auto stack_check(lua_State* L, int arg = 1) -> std::enable_if_t<is_userdata_type_v<T>, T*>
+	{
+		// TODO ... check class type
+		//::luaL_checkudata(L, arg, "dummy_class");
+		return detail::stack_get_userdata<T>(L, arg);
 	}
 }
 
