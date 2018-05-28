@@ -20,6 +20,25 @@ namespace kath
 			auto ptr = lua_newuserdata(L, sizeof(value_type)); 
 			new (ptr) value_type{ std::forward<Args>(args)... };
 		}
+
+		template <typename T, typename = void>
+		struct is_smart_pointer_with_reference_type : std::false_type {};
+
+		template <typename T>
+		struct is_smart_pointer_with_reference_type<T, std::enable_if_t<is_smart_pointer_v<T>>>
+			: is_reference_type<typename T::element_type>
+		{};
+
+		// traits element type
+		template <typename T>
+		struct traits_element_type
+		{
+			using tmp_type = std::remove_reference_t<T>;
+			using type = typename tmp_type::element_type;
+		};
+
+		template <typename T>
+		using traits_element_type_t = typename traits_element_type<T>::type;
 	}
 
 	inline static void stack_push(lua_State* L, nil_t = nil)
@@ -68,15 +87,22 @@ namespace kath
 	inline static auto stack_push(lua_State* L, T&& t) -> std::enable_if_t<is_value_type_v<std::remove_reference_t<T>>>
 	{
 		detail::stack_push_userdata(L, std::forward<T>(t));
-		// TODO ... set metatable
+		::luaL_setmetatable(L, get_class_name<T>());
+	}
+
+	template <typename T>
+	inline static auto stack_push(lua_State* L, T&& t) 
+		-> std::enable_if_t<detail::is_smart_pointer_with_reference_type<std::remove_reference_t<T>>::value>
+	{
+		detail::stack_push_userdata(L, std::forward<T>(t));
+		::luaL_setmetatable(L, get_class_name<detail::traits_element_type_t<T>>());
 	}
 
 	template <typename T>
 	inline static auto stack_push(lua_State* L, T&& t) -> std::enable_if_t<is_reference_type_v<std::remove_reference_t<T>>>
 	{
 		auto ref_ptr = t.ref_from_this();
-		detail::stack_push_userdata(L, std::move(ref_ptr));
-		// TODO ... set metatable
+		stack_push(L, std::move(ref_ptr));
 	}
 
 }
@@ -87,10 +113,19 @@ namespace kath
 	namespace detail
 	{
 		template <typename T>
-		inline static auto stack_get_userdata(lua_State* L, int index = -1)
+		inline static auto stack_get_emplaced_userdata(lua_State* L, int index = -1)
 		{
+			// TODO ... check nullptr
 			return reinterpret_cast<T*>(::lua_touserdata(L, index));
 		}
+
+		template <typename T>
+		inline static auto stack_get_referenced_userdata(lua_State* L, int index = -1)
+		{
+			// TODO ... check nullptr
+			auto ptr = reinterpret_cast<T**>(::lua_touserdata(L, index));
+			return *ptr;
+		} 
 	}
 
 	template <typename T>
@@ -135,14 +170,21 @@ namespace kath
 	inline static auto stack_get(lua_State* L, int index = -1) noexcept 
 		-> std::enable_if_t<meta_and_v<kath::is_callable<T>, negative<is_lua_cfunction<T>>>, T*>
 	{
-		return detail::stack_get_userdata<T>(L, index);
+		return detail::stack_get_emplaced_userdata<T>(L, index);
 	}
 
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_userdata_type_v<T>, T*>
+	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_value_type_v<T>, T*>
 	{
-		return detail::stack_get_userdata<T>(L, index);
+		return detail::stack_get_emplaced_userdata<T>(L, index);
 	}
+
+	template <typename T>
+	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_reference_type_v<T>, T*>
+	{
+		return detail::stack_get_referenced_userdata<T>(L, index);
+	}
+
 }
 
 // stack check get
@@ -185,7 +227,7 @@ namespace kath
 	{
 		// TODO ... check class type
 		//::luaL_checkudata(L, arg, "dummy_class");
-		return detail::stack_get_userdata<T>(L, arg);
+		return stack_get<T>(L, arg);
 	}
 }
 
@@ -200,6 +242,11 @@ namespace kath
 	inline static void check_type(lua_State* L, basic_type type, int index = -1)
 	{
 		::luaL_checktype(L, index, static_cast<int32_t>(index));
+	}
+
+	inline static void stack_duplicate(lua_State* L, int index = -1)
+	{
+		::lua_pushvalue(L, index);
 	}
 }
 
@@ -283,70 +330,70 @@ namespace kath
 namespace kath
 {
 	template <typename Key>
-	auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_c_string_v<Key>>
+	inline static auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_c_string_v<Key>>
 	{
 		::lua_setglobal(L, key);
 	}
 
 	template <typename Key>
-	auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_char_array_v<Key>>
+	inline static auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_char_array_v<Key>>
 	{
 		::lua_setglobal(L, key);
 	}
 
 	template <typename Key>
-	auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_std_string_v<Key>>
+	inline static auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_std_string_v<Key>>
 	{
 		::lua_setglobal(L, key.c_str());
 	}
 
 	template <typename Key>
-	auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_string_view_v<Key>>
+	inline static auto set_global(lua_State* L, Key const& key) -> std::enable_if_t<is_string_view_v<Key>>
 	{
 		detail::check_string_view(key);
 		::lua_setglobal(L, key.data());
 	}
 
 	template <typename Key, typename Value>
-	void set_global(lua_State* L, Key const& key, Value&& value)
+	inline static void set_global(lua_State* L, Key const& key, Value&& value)
 	{
 		stack_push(L, std::forward<Value>(value));
 		set_global(L, key);
 	}
 
 	template <typename Key>
-	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_c_string_v<Key>>
+	inline static auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_c_string_v<Key>>
 	{
 		::lua_setfield(L, index, key);
 	}
 
 	template <typename Key>
-	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_char_array_v<Key>>
+	inline static auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_char_array_v<Key>>
 	{
 		::lua_setfield(L, index, key);
 	}
 
 	template <typename Key>
-	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_std_string_v<Key>>
+	inline static auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_std_string_v<Key>>
 	{
 		::lua_setfield(L, index, key.c_str());
 	}
 
 	template <typename Key>
-	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_string_view_v<Key>>
+	inline static auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_string_view_v<Key>>
 	{
 		detail::check_string_view(key);
 		::lua_setfield(L, index, key.data());
 	}
 
 	template <typename Key>
-	auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_integral_v<Key>>
+	inline static auto set_field(lua_State* L, Key const& key, int index = -2) -> std::enable_if_t<is_integral_v<Key>>
 	{
 		::lua_seti(L, index, static_cast<lua_Integer>(key));
 	}
 
 	template <typename Key, typename Value>
-	auto set_table(lua_State* L, Key const& key, Value&& value, int index = -1)
+	inline static auto set_table(lua_State* L, Key const& key, Value&& value, int index = -1)
 		-> std::enable_if_t<meta_or_v<is_string<Key>, is_integral<Key>>>
 	{
 		stack_push(L, std::forward<Value>(value));
@@ -354,13 +401,18 @@ namespace kath
 	}
 
 	template <typename Key, typename Value>
-	auto set_table(lua_State* L, Key const& key, Value&& value, int index = -1)
+	inline static auto set_table(lua_State* L, Key const& key, Value&& value, int index = -1)
 		-> disable_if_t<meta_or_v<is_string<Key>, is_integral<Key>>>
 	{
 		stack_push(L, key);
 		stack_push(L, std::forward<Value>(value));
 		::lua_settable(L, index - 2);
 	}
+
+	inline static void set_table(lua_State* L, int index = -3)
+	{
+		::lua_settable(L, index);
+	}	
 }
 
 // higher level
