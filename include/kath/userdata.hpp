@@ -26,7 +26,8 @@ namespace kath
             stack_push(L, [](lua_State* L) -> int
             {
                 using ref_counter_type = decltype(std::declval<T>().ref_from_this());
-                auto ptr = detail::stack_get_emplaced_userdata<ref_counter_type>(L);
+                // TODO .. check ?
+                auto ptr = detail::stack_get_emplaced_userdata<ref_counter_type>(L, 1);
                 assert(ptr);
                 ptr->~ref_counter_type();
                 return 0;
