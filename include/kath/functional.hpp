@@ -49,7 +49,23 @@ namespace kath
 		return func_detail::bind_impl(std::forward<Func>(f), std::forward<Args>(args)...);
 	}
 
-	
+	template <typename T, typename C>
+	inline static auto bind_field_get(T C::* pmd) 
+	{
+		return [pmd](C* ptr) -> T const&
+		{
+			return ptr->*pmd;
+		};
+	}
+
+	template <typename T, typename C>
+	inline static auto bind_field_set(T C::* pmd)
+	{
+		return [pmd](C* ptr, T const& v) -> void
+		{
+			ptr->*pmd = v;
+		};
+	}
 }
 
 
@@ -102,13 +118,14 @@ namespace kath
 			return invoke_impl<result_type>(L, *callable);
 		}
 
-		static void stack_push_impl(lua_State* L, lua_CFunction f)
+		template <typename F>
+		static auto stack_push_impl(lua_State* L, F&& f) -> std::enable_if_t<is_lua_cfunction_v<F>>
 		{
 			::lua_pushcclosure(L, f, 0);
 		}
 
 		template <typename F>
-		static void stack_push_impl(lua_State* L, F&& f)
+		static auto stack_push_impl(lua_State* L, F&& f) -> disable_if_t<is_lua_cfunction_v<F>>
 		{
 			detail::stack_push_userdata(L, std::forward<F>(f));
 
@@ -120,3 +137,7 @@ namespace kath
 }
 
 // lua callable
+namespace kath
+{
+	
+}

@@ -186,8 +186,12 @@ namespace kath
 	inline constexpr bool is_callable_v = is_callable<T>::value;
 
 	// is lua_CFuntion type
+	template <typename T, typename = void>
+	struct is_lua_cfunction : std::false_type {};
+
 	template <typename T>
-	using is_lua_cfunction = std::is_same<T, lua_CFunction>;
+	struct is_lua_cfunction<T, std::void_t<decltype(static_cast<lua_CFunction>(std::declval<T>()))>>
+		: std::true_type {};
 
 	template <typename T>
 	inline constexpr bool is_lua_cfunction_v = is_lua_cfunction<T>::value;
@@ -315,12 +319,6 @@ namespace kath
 		{
 			using type = std::add_lvalue_reference_t<std::add_const_t<remove_rcv_t<Key>>>;
 		};
-
-		//template <typename Key>
-		//struct extract_key_type_impl<Key, std::enable_if_t<is_c_string_v<Key>>>
-		//{
-		//	using type = std::add_pointer_t<std::add_const_t<std::remove_pointer_t<Key>>>;
-		//};
 	}
 
 	template <typename Key>
