@@ -124,13 +124,31 @@ namespace kath
 			::lua_pushcclosure(L, f, 0);
 		}
 
+		static void gc_for_function_object(lua_State* L)
+		{
+			using orginal_function_type = std::remove_cv_t<function_type>;
+			if constexpr(!std::is_trivially_destructible_v<orginal_function_type>)
+			{
+				::lua_createtable(L, 0, 1);
+				stack_push(L, [](lua_State* L) -> int
+				{
+					// TODO ... check?
+					auto ptr = detail::stack_get_emplaced_userdata<orginal_function_type>(L, 1);
+					assert(ptr);
+					ptr->~orginal_function_type();
+					return 0;
+				});
+				set_field(L, "__gc");
+
+				::lua_setmetatable(L, -2);
+			}
+		}
+
 		template <typename F>
 		static auto stack_push_impl(lua_State* L, F&& f) -> disable_if_t<is_lua_cfunction_v<F>>
 		{
 			detail::stack_push_userdata(L, std::forward<F>(f));
-
-			// TODO ... metatable for destructor
-
+			gc_for_function_object(L);
 			::lua_pushcclosure(L, &lua_cfunctor::invoke, 1);
 		}
 	};
