@@ -176,11 +176,17 @@ namespace kath
 	inline constexpr bool is_string_v = is_string<T>::value;
 
 	// callable
-	template <typename T, typename = void>
-	struct is_callable : std::is_function<T> {};
+    template <typename T, typename = void>
+    struct is_functor : std::false_type {};
+
+    template <typename T>
+	struct is_functor<T, std::void_t<decltype(&T::operator())>> : std::true_type {};
+
+    template <typename T>
+    inline constexpr bool is_functor_v = is_functor<T>::value;
 
 	template <typename T>
-	struct is_callable<T, std::void_t<decltype(&T::operator())>> : std::true_type {};
+	using is_callable = meta_or<std::is_function<T>, is_functor<T>>;
 
 	template <typename T>
 	inline constexpr bool is_callable_v = is_callable<T>::value;
@@ -338,7 +344,7 @@ namespace kath
 		struct callable_traits_impl;
 
 		template <typename Callable>
-		struct callable_traits_impl<Callable, std::void_t<decltype(&Callable::operator())>>
+		struct callable_traits_impl<Callable, std::enable_if_t<is_functor_v<Callable>>>
 			: callable_traits_impl<decltype(&Callable::operator())> 
 		{
 			inline static constexpr bool is_pmf = false;
@@ -454,7 +460,7 @@ namespace kath
 	}
 
 	template <typename Callable>
-	struct callable_traits : detail::callable_traits_impl<remove_rcv_t<Callable>> {};
+	struct callable_traits : detail::callable_traits_impl<std::remove_reference_t<Callable>> {};
 }
 
 // result traits

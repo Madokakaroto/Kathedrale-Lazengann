@@ -41,7 +41,12 @@ namespace kath
     template <typename Base, typename Derived>
     inline static auto inherit_from(lua_State* L) -> std::enable_if_t<std::is_base_of_v<Base, Derived>>
     {
-        // stack_guard guard{ L };
-        // TODO ... inheritance
+        stack_guard guard{ L };
+
+        luaL_getmetatable(L, get_class_name<Derived>());
+        ::lua_createtable(L, 0, 2);
+        luaL_getmetatable(L, get_class_name<Base>());
+        set_field(L, "__index");
+        ::lua_setmetatable(L, -2);
     }
 }
