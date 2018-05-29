@@ -65,7 +65,7 @@ namespace kath
 
 	template <typename T>
 	inline static auto stack_push(lua_State* L, T const& value) 
-		-> std::enable_if_t<meta_or_v<is_c_string<T>, is_char_array_v<T>>, char const*>
+		-> std::enable_if_t<meta_or_v<is_c_string<T>, is_char_array<T>>, char const*>
 	{
 		return ::lua_pushstring(L, value);
 	}
