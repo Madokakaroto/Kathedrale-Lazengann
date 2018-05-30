@@ -129,9 +129,6 @@ int main(void)
             [](int a, int b){ return a + b; }, 
             [](int a, int b, int c){ return a + b + c; });
         kath::stack_push(L, overload);
-
-        //using callable_traits_t = kath::callable_traits<decltype(overload)>;
-        //std::is_same<lua_CFunction, callable_traits_t::signature_type>::value;
     }
 
 	return 0;
