@@ -323,6 +323,7 @@ namespace kath
     }
 }
 
+// constructor
 namespace kath
 {
     namespace detail
@@ -333,6 +334,15 @@ namespace kath
             auto emplace_address = ::lua_newuserdata(L, sizeof(T));
             new (emplace_address) T{ std::forward<std::tuple_element_t<Is, Tuple>>(
                 stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 1))... };
+        }
+
+        template <typename T, typename RefCounter, typename Tuple, size_t ... Is>
+        inline static void make_ref_object(lua_State* L, std::index_sequence<Is...>)
+        {
+            auto ptr = make_ref<T, RefCounter>(std::forward<std::tuple_element_t<Is, Tuple>>(
+                stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 1))...);
+            
+            detail::stack_push_userdata(L, std::move(ptr));
         }
     }
 
@@ -348,7 +358,9 @@ namespace kath
             else
             {
                 static_assert(is_reference_type_v<T>, "Unsupported type!");
-
+                using ref_count_ptr_t = decltype(std::declval<T>().ref_from_this());
+                detail::make_ref_object<T, typename ref_count_ptr_t::ref_counter, std::tuple<Args...>>(
+                    L, std::make_index_sequence<sizeof...(Args)>{});
             }
             
             // set class

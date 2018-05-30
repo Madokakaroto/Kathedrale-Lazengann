@@ -324,13 +324,17 @@ namespace kath
     class ref_count_ptr : public detail::ref_count_ptr_base<T, RefCounter>
     {
         using base_type = detail::ref_count_ptr_base<T, RefCounter>;
+        using ref_count_interface = typename base_type::ref_count_interface;
         template <typename _T, typename _RefCounter> friend class ref_count_ptr;
         template <typename _T, typename _RefCounter> friend class detail::ref_count_ptr_base;
         template <typename _T> using ref_count_ptr_alias = ref_count_ptr<_T, RefCounter>;
         template <typename _T> using weak_ptr_alias = weak_ptr<_T, RefCounter>;
+        template <typename _T, typename _RefCounter, typename ... Args>
+        friend ref_count_ptr<_T, _RefCounter> make_ref(Args&& ... args);
 
     public:
         using element_type = typename base_type::element_type;
+        using ref_counter = typename base_type::ref_counter;
 
     public: // constructor
         ref_count_ptr() = default;
@@ -370,11 +374,12 @@ namespace kath
         template <typename _T, typename = decltype(std::declval<T*&>() = std::declval<_T*>())>
         explicit ref_count_ptr(_T* ptr)
         {
-            using ref_counter_interface = detail::ref_count<element_type, RefCounter>;
+            using ref_counter_interface_t = detail::ref_count<element_type, RefCounter>;
 
             assert(ptr);
-            this->KATH_set_impl(ptr, new ref_counter_interface{ ptr });
-            init_enable_ref_from_this(*this, ptr);
+            /*this->KATH_set_impl(ptr, new ref_counter_interface_t{ ptr });
+            init_enable_ref_from_this(*this, ptr);*/
+            set_ptr_and_enable_ref(ptr, new ref_counter_interface_t{ ptr });
         }
 
         ~ref_count_ptr()
@@ -439,6 +444,14 @@ namespace kath
         }
 
     private:
+        template <typename _T, typename = decltype(std::declval<T*&>() = std::declval<_T*>())>
+        void set_ptr_and_enable_ref(_T* ptr, ref_count_interface* counter)
+        {
+            assert(counter);
+            this->KATH_set_impl(ptr, counter);
+            init_enable_ref_from_this(*this, ptr);
+        }
+
         template <typename _T, typename Pointer>
         void init_enable_ref_from_this(ref_count_ptr_alias<_T> const& rptr, Pointer ptr)
         {
@@ -615,4 +628,13 @@ namespace kath
     protected:
         mutable weak_ptr<T, RefCounter> weak_ptr_;
     };
+
+    template <typename T, typename RefCounter, typename ... Args>
+    inline static ref_count_ptr<T, RefCounter> make_ref(Args&& ... args)
+    {
+        auto ref_count_obj = new detail::ref_count_obj<T, RefCounter>{ std::forward<Args>(args)... };
+        ref_count_ptr<T, RefCounter> ptr;
+        ptr.set_ptr_and_enable_ref(ref_count_obj->get_pointer(), ref_count_obj);
+        return ptr;
+    }
 }
