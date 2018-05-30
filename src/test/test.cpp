@@ -124,6 +124,14 @@ int main(void)
         auto lambda = [](int a, int b){ return a + b; };
         using int_int_tuple = kath::callable_traits<decltype(lambda)>::args_pack;
         int_int_tuple ii = { 1, 2 };
+
+        auto overload = kath::overload( 
+            [](int a, int b){ return a + b; }, 
+            [](int a, int b, int c){ return a + b + c; });
+        kath::stack_push(L, overload);
+
+        //using callable_traits_t = kath::callable_traits<decltype(overload)>;
+        //std::is_same<lua_CFunction, callable_traits_t::signature_type>::value;
     }
 
 	return 0;

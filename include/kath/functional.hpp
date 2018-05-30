@@ -115,7 +115,15 @@ namespace kath
 		{
 			using upvalue_placeholders::_1;
 			auto callable = stack_get<function_type>(L, _1);
-			return invoke_impl<result_type>(L, *callable);
+
+            if constexpr(std::is_same_v<lua_CFunction, typename callable_traits_t::signature_type>)
+            {
+                return (*callable)(L);
+            }
+            else
+            {
+                return invoke_impl<result_type>(L, *callable);
+            }
 		}
 
 		template <typename F>
@@ -152,6 +160,166 @@ namespace kath
 			::lua_pushcclosure(L, &lua_cfunctor::invoke, 1);
 		}
 	};
+}
+
+// overload function
+namespace kath
+{
+    namespace detail
+    {
+        template <typename F, size_t ... Is>
+        inline static auto callable_type_erase_impl(F&& f, std::index_sequence<Is...>)
+            -> std::function<int(lua_State* L)>
+        {
+            using callable_traits_t = callable_traits<F>;
+            using args_pack = typename callable_traits_t::args_pack;
+
+            return [func = std::forward<F>(f)](lua_State* L) -> int
+            {
+                if constexpr(std::is_void_v<typename callable_traits_t::result_type>)
+                {
+                    func(stack_check<std::tuple_element_t<Is, args_pack>>(L, Is + 1)...);
+                    return 0;
+                }
+                else
+                {
+                    auto result = func(stack_check<std::tuple_element_t<Is, args_pack>>(L, Is + 1)...);
+                    stack_push(L, std::move(result));
+                    return 1;
+                }
+            };
+        }
+
+        template <typename T>
+        inline static auto static_type_name() noexcept
+        {
+            static_assert(meta_or_v<is_primitive_type<T>, is_userdata_type<T>>, "Type not supported!");
+            if constexpr(is_bool_v<T>)
+            {
+                return 'b';
+            }
+            else if constexpr(meta_or_v<is_floating_point<T>, is_integral<T>>)
+            {
+                return 'n';
+            }
+            else if constexpr(is_string_v<T>)
+            {
+                return 's';
+            }
+            else 
+            {
+                return get_class_name<T>();
+            }
+        }
+
+        inline static char const* stack_type_name(lua_State* L, int arg = 1) noexcept
+        {
+            auto type = static_cast<basic_type>(::lua_type(L, arg));
+            switch(type)
+            {
+            case basic_type::userdata:
+            {
+                // TODO ... higher level table op
+                stack_guard guard{ L };
+                ::lua_getmetatable(L, arg);
+                fetch_field(L, "__name");
+                return stack_check<char const*>(L, -1);
+            }
+            default:
+                return basic_type_name(type);
+            }
+        }
+
+        template <typename F, size_t ... Is>
+        inline static std::string callable_type_string_impl(F&&, std::index_sequence<Is...>)
+        {
+            using args_pack = typename callable_traits<F>::args_pack;
+
+            std::string result{};
+            swallow_t{ (result += static_type_name<std::tuple_element_t<Is, args_pack>>()) ... };
+            return result;
+        }
+
+        template <typename F, typename = std::enable_if_t<is_callable_v<std::remove_reference_t<F>>>>
+        inline static auto callable_type_erase(F&& f)
+        {
+            using callable_traits = callable_traits<F>;
+            return detail::callable_type_erase_impl(std::forward<F>(f), std::make_index_sequence<callable_traits::arity>{});
+        }
+
+        template <typename F, typename = std::enable_if_t<is_callable_v<std::remove_reference_t<F>>>>
+        inline static std::string callable_type_string(F&& f)
+        {
+            using callable_traits = callable_traits<F>;
+            return detail::callable_type_string_impl(std::forward<F>(f), std::make_index_sequence<callable_traits::arity>{});
+        }
+    }
+
+    class overload_functor
+    {
+    public:
+        template <typename F, typename ... Fs>
+        overload_functor(F&& f, Fs&& ... fs)
+            : functions_()
+        {
+            swallow_t {  
+                (emplace_function(std::forward<F>(f)), true), 
+                (emplace_function(std::forward<Fs>(fs)), true)... 
+            };
+        }
+
+        ~overload_functor() = default;
+        overload_functor(overload_functor const&) = default;
+        overload_functor& operator=(overload_functor const&) = default;
+        overload_functor(overload_functor&&) = default;
+        overload_functor& operator=(overload_functor&&) = default;
+
+        int operator()(lua_State* L) const
+        {
+            std::string overload_name{};
+            auto count = ::lua_gettop(L);
+            for(auto loop = 1; loop <= count; ++loop)
+            {
+                overload_name += basic_type_name(static_cast<basic_type>(::lua_type(L, loop)));
+            }
+            
+            auto itr = functions_.find(overload_name);
+            if(itr == functions_.end())
+            {
+                // TODO ... better runtime error
+                using namespace std::string_literals;
+                std::string error_str = "Cannot find overload resolution for "s + overload_name;
+                throw std::runtime_error{ std::move(error_str) };
+            }
+
+            return itr->second(L);
+        }
+
+    private:
+        template <typename F>
+        void emplace_function(F&& f)
+        {
+            auto overload_name = detail::callable_type_string(std::forward<F>(f));
+            auto overload_function = detail::callable_type_erase(std::forward<F>(f));
+
+            if(!functions_.emplace(std::move(overload_name), std::move(overload_function)).second)
+            {
+                // TODO ... better exception
+                using namespace std::string_literals;
+                std::string error_str = "Overload functor signature("s + overload_name + ") conflicted!";
+                throw std::runtime_error{ "overload function signature conflicted!" };
+            }
+        }
+
+    private:
+        std::map<std::string, std::function<int(lua_State* L)>> functions_;
+    };
+
+    template <typename F, typename ... Fs>
+    inline static overload_functor overload(F&& f, Fs&& ... fs)
+    {
+        return overload_functor{ std::forward<F>(f), std::forward<Fs>(fs)... };
+    }
 }
 
 // lua callable
