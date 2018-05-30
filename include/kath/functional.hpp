@@ -68,10 +68,45 @@ namespace kath
 	}
 }
 
-
 // lua_cfunctor
 namespace kath
 {
+    namespace detail
+    {
+        template <typename F, size_t ... Is>
+        inline static auto invoke_on_stack_impl(lua_State* L, F const& f, std::index_sequence<Is...>)
+        {
+            using callable_traits_t = callable_traits<F>;
+            using args_pack = typename callable_traits_t::args_pack;
+            return f(std::forward<std::tuple_element_t<Is, args_pack>>(stack_check<std::tuple_element_t<Is, args_pack>>(L, Is + 1))...);
+        }
+
+        template <typename F>
+        inline static auto invoke_on_stack_impl(lua_State* L, F const& f)
+        {
+            using callable_traits_t = callable_traits<F>;
+            return invoke_on_stack_impl(L, f, std::make_index_sequence<callable_traits_t::arity>{});
+        }
+
+        template <typename F>
+        inline static int invoke_on_stack(lua_State* L, F const& f)
+        {
+            using callable_traits_t = callable_traits<F>;
+            using result_type = typename callable_traits_t::result_type;
+            if constexpr(std::is_void_v<result_type>)
+            {
+                invoke_on_stack_impl(L, f);
+                return 0;
+            }
+            else
+            {
+                auto result = invoke_on_stack_impl(L, f);
+                stack_push(L, std::move(result));
+                return 1;
+            }
+        }
+    }
+
 	template <typename Func>
 	struct lua_cfunctor
 	{
@@ -88,29 +123,6 @@ namespace kath
 		}
 
 	private:
-		template <typename T>
-		static auto invoke_impl(lua_State* L, function_type const& func)
-			-> std::enable_if_t<std::is_void_v<T>, int> 
-		{
-			invoke_impl(L, func, std::make_index_sequence<arity>{});
-			return 0;
-		}
-
-		template <typename T>
-		static auto invoke_impl(lua_State* L, function_type const& func)
-			-> disable_if_t<std::is_void_v<T>, int>
-		{
-			auto result = invoke_impl(L, func, std::make_index_sequence<arity>{});
-			stack_push(L, std::move(result));
-			return 1;
-		}
-
-		template <size_t ... Is>
-		static auto invoke_impl(lua_State* L, function_type const& func, std::index_sequence<Is...>)
-		{
-			return func(stack_check<std::tuple_element_t<Is, args_pack>>(L, Is + 1)...);
-		}
-
 		static int invoke(lua_State* L)
 		{
 			using upvalue_placeholders::_1;
@@ -122,7 +134,7 @@ namespace kath
             }
             else
             {
-                return invoke_impl<result_type>(L, *callable);
+                return detail::invoke_on_stack(L, *callable);
             }
 		}
 
@@ -167,8 +179,8 @@ namespace kath
 {
     namespace detail
     {
-        template <typename F, size_t ... Is>
-        inline static auto callable_type_erase_impl(F&& f, std::index_sequence<Is...>)
+        template <typename F>
+        inline static auto callable_type_erase_impl(F&& f)
             -> std::function<int(lua_State* L)>
         {
             using callable_traits_t = callable_traits<F>;
@@ -176,17 +188,7 @@ namespace kath
 
             return [func = std::forward<F>(f)](lua_State* L) -> int
             {
-                if constexpr(std::is_void_v<typename callable_traits_t::result_type>)
-                {
-                    func(stack_check<std::tuple_element_t<Is, args_pack>>(L, Is + 1)...);
-                    return 0;
-                }
-                else
-                {
-                    auto result = func(stack_check<std::tuple_element_t<Is, args_pack>>(L, Is + 1)...);
-                    stack_push(L, std::move(result));
-                    return 1;
-                }
+                return detail::invoke_on_stack(L, func);
             };
         }
 
@@ -243,8 +245,7 @@ namespace kath
         template <typename F, typename = std::enable_if_t<is_callable_v<std::remove_reference_t<F>>>>
         inline static auto callable_type_erase(F&& f)
         {
-            using callable_traits = callable_traits<F>;
-            return detail::callable_type_erase_impl(std::forward<F>(f), std::make_index_sequence<callable_traits::arity>{});
+            return detail::callable_type_erase_impl(std::forward<F>(f));
         }
 
         template <typename F, typename = std::enable_if_t<is_callable_v<std::remove_reference_t<F>>>>
@@ -307,7 +308,7 @@ namespace kath
                 // TODO ... better exception
                 using namespace std::string_literals;
                 std::string error_str = "Overload functor signature("s + overload_name + ") conflicted!";
-                throw std::runtime_error{ "overload function signature conflicted!" };
+                throw std::runtime_error{ std::move(error_str) };
             }
         }
 
@@ -319,6 +320,41 @@ namespace kath
     inline static overload_functor overload(F&& f, Fs&& ... fs)
     {
         return overload_functor{ std::forward<F>(f), std::forward<Fs>(fs)... };
+    }
+}
+
+namespace kath
+{
+    namespace detail
+    {
+        template <typename T, typename Tuple, size_t ... Is>
+        inline static void emplace_new_object(lua_State* L, std::index_sequence<Is...>)
+        {
+            auto emplace_address = ::lua_newuserdata(L, sizeof(T));
+            new (emplace_address) T{ std::forward<std::tuple_element_t<Is, Tuple>>(
+                stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 1))... };
+        }
+    }
+
+    template <typename T, typename ... Args>
+    inline static auto constructor()
+    {
+        return [](lua_State* L)
+        {
+            if constexpr(is_value_type_v<T>)
+            {
+                detail::emplace_new_object<T, std::tuple<Args...>>(L, std::make_index_sequence<sizeof...(Args)>{});
+            }
+            else
+            {
+                static_assert(is_reference_type_v<T>, "Unsupported type!");
+
+            }
+            
+            // set class
+            ::luaL_setmetatable(L, get_class_name<T>());
+            return 1;
+        };
     }
 }
 
