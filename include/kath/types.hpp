@@ -19,4 +19,19 @@ namespace kath
 
 	inline constexpr struct global_table_tag_t {}  global_table_tag{};
 	inline constexpr struct normal_table_tag_t {} normal_table_tag{};
+
+    inline static char const* basic_type_name(basic_type type) noexcept
+    {
+        switch(type)
+        {
+        case basic_type::boolean:
+            return "b";
+        case basic_type::number:
+            return "n";
+        case basic_type::string:
+            return "s";
+        default:
+            return "X";
+        }
+    }
 }
