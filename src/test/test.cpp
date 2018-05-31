@@ -97,6 +97,7 @@ int main(void)
 
     }
 
+
     // test bind
     {
         using namespace std::placeholders;
