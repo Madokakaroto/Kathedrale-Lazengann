@@ -84,8 +84,8 @@ int main(void)
     }
 
     // test compile
-    //lua_State* L = nullptr;
-    //kath::stack_push(L, [](int a, int b){ return a + b; });
+    lua_State* L = nullptr;
+    kath::stack_push(L, [](int a, int b){ return a + b; });
 
     {
         using std::placeholders::_1;
@@ -120,11 +120,13 @@ int main(void)
         std::cout << kath::is_callable_v<decltype(bind2)> << std::endl;
 
         lua_State* L = nullptr;
-        kath::stack_push(L, bind0);
+        //kath::stack_push(L, bind0);
 
         auto lambda = [](int a, int b){ return a + b; };
         using int_int_tuple = kath::callable_traits<decltype(lambda)>::args_pack;
         int_int_tuple ii = { 1, 2 };
+
+        //kath::is_callable<int>::value
 
         auto overload = kath::overload( 
             [](int a, int b){ return a + b; }, 
