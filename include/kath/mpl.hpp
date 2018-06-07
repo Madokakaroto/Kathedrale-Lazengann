@@ -272,6 +272,8 @@ namespace kath
 		negative<is_primitive_type<T>>,
 		negative<is_callable<T>>,
 		negative<is_manipulated_type<T>>,
+		negative<std::is_reference<T>>,
+		negative<std::is_pointer<T>>,
 		std::is_trivially_destructible<T>,
 		std::is_copy_assignable<T>,
 		std::is_copy_constructible<T>

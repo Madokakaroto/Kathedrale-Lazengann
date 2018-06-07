@@ -165,7 +165,9 @@ int main(void)
 
     // test compile kath::stack_get
     {
-
+        lua_State* L = nullptr;
+        auto a = kath::stack_get<int&>(L);
+        auto b = kath::stack_get<int const&>(L);
     }
 
 	return 0;
