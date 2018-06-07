@@ -129,45 +129,61 @@ namespace kath
 	template <typename T>
 	inline constexpr bool is_char_array_v = is_char_array<T>::value;
 
-	// if is a string buffer
+	namespace detail
+	{
+		template <typename T>
+		using is_instance_of_std_string = is_instance_of<T, std::basic_string>;
+
+		template <typename T>
+		using is_instance_of_std_string_view = is_instance_of<T, std::basic_string_view>;
+	}
+
 	template <typename T, typename = void>
-	struct is_string_buffer : std::false_type {};
+	struct element_type
+	{
+		using type = void;
+		static constexpr bool value = false;
+	};
 
 	template <typename T>
-	struct is_string_buffer<T, std::void_t<
-		decltype(std::declval<T>().data()),
-		decltype(std::declval<T>().size()),
-		std::enable_if_t<std::is_same_v<std::add_const_t<typename T::value_type>, char const>>
-		>> : std::true_type {};
+	struct element_type<T, std::void_t<typename T::element_type>>
+	{
+		using type = element_type;
+		static constexpr bool value = true;
+	};
 
 	template <typename T>
-	inline constexpr bool is_string_buffer_v = is_string_buffer<T>::value;
+	using element_type_t = typename element_type<T>::type;
 
-	// is std::string and compatible data structure
-	template <typename T, typename = void>
-	struct is_std_string : std::false_type {};
-
-	template<typename T>
-	struct is_std_string<T, std::void_t<
-		std::enable_if_t<is_string_buffer_v<T>>,
-		decltype(std::declval<T>().c_str())
-		>> : std::true_type {};
+	// std::string with char as element_type
+	template <typename T>
+	using is_std_string = meta_and<
+		detail::is_instance_of_std_string<T>, 
+		std::is_same<element_type_t<T>, char> 
+	>;
 
 	template <typename T>
 	inline constexpr bool is_std_string_v = is_std_string<T>::value;
 
-	// is std::string_view and compatible data structure
-	template <typename T, typename = void>
-	struct is_string_view : std::false_type {};
-
+	// std::string_view with char as element_type
 	template <typename T>
-	struct is_string_view<T, std::void_t<
-		std::enable_if_t<is_string_buffer_v<T>>,
-		std::enable_if_t<std::is_trivially_destructible_v<std::remove_reference_t<T>>>
-		>> : std::true_type {};
+	using is_string_view = meta_and<
+		detail::is_instance_of_std_string_view<T>,
+		std::is_same<element_type_t<T>, char>
+	>;
 
 	template <typename T>
 	inline constexpr bool is_string_view_v = is_string_view<T>::value;
+
+	// if is a string buffer
+	template <typename T>
+	using is_string_buffer = meta_and<
+		meta_or<is_std_string<T>, is_string_view<T>>,
+		std::is_same<element_type_t<T>, char>
+	>;
+
+	template <typename T>
+	inline constexpr bool is_string_buffer_v = is_string_buffer<T>::value;
 
 	// potential string value type in C
 	template <typename T>
