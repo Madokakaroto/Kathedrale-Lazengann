@@ -235,7 +235,7 @@ namespace kath
                 stack_guard guard{ L };
                 ::lua_getmetatable(L, arg);
                 fetch_field(L, "__name");
-                return stack_get<char const*>(L, -1);
+                return stack_check<char const*>(L, -1);
             }
             default:
                 return basic_type_name(type);
@@ -343,14 +343,14 @@ namespace kath
         {
             auto emplace_address = ::lua_newuserdata(L, sizeof(T));
             new (emplace_address) T{ std::forward<std::tuple_element_t<Is, Tuple>>(
-                stack_get<std::tuple_element_t<Is, Tuple>>(L, Is + 1))... };
+                stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 1))... };
         }
 
         template <typename T, typename RefCounter, typename Tuple, size_t ... Is>
         inline static void make_ref_object(lua_State* L, std::index_sequence<Is...>)
         {
             auto ptr = make_ref<T, RefCounter>(std::forward<std::tuple_element_t<Is, Tuple>>(
-                stack_get<std::tuple_element_t<Is, Tuple>>(L, Is + 1))...);
+                stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 1))...);
             
             detail::stack_push_userdata(L, std::move(ptr));
         }

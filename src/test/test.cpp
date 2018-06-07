@@ -170,5 +170,10 @@ int main(void)
         auto b = kath::stack_get<int const&>(L);
     }
 
+    {
+        lua_State* L = nullptr;
+        auto a = kath::stack_check<int&>(L);
+    }
+
 	return 0;
 }
