@@ -260,9 +260,44 @@ namespace kath
 	}
 
 	template <typename T>
-	inline static auto stack_check(lua_State* L, int arg = 1) -> std::enable_if_t<is_userdata_type_v<T>, T*>
+	inline static auto stack_check(lua_State* L, int arg = 1) -> std::enable_if_t<is_userdata_type_v<T>, T&>
 	{
 		::luaL_checkudata(L, arg, get_class_name<T>());
+		return stack_get<T>(L, arg);
+	}
+
+	template <typename T>
+	inline static auto stack_check(lua_State* L, int arg = 1) -> std::enable_if_t<detail::is_ref_value_ptr_v<T>, T&>
+	{
+		using type = typename T::element_type;
+		::luaL_checkudata(L, arg, get_class_name<type>());
+		return stack_get<T>(L, arg);
+	}
+
+	// stack check for reference
+	template <typename T>
+	inline static decltype(auto) stack_check(lua_State* L, std::enable_if_t<std::is_reference_v<T>, int> arg = 1)
+	{
+		return stack_check<std::remove_reference_t<T>>(L, arg);
+	}
+
+	// stack check for pointer of userdata
+	template <typename T>
+	inline static auto stack_check(lua_State* L, int arg = 1) -> std::enable_if_t<
+		meta_and_v<std::is_pointer<T>, is_userdata_type<std::remove_pointer_t<T>>>, T>
+	{
+		using type = std::remove_pointer_t<T>;
+		::luaL_checkudata(L, arg, get_class_name<type>());
+		return stack_get<T>(L, arg);
+	}
+
+	// stack check for pointer of share_ptr
+	template <typename T>
+	inline static auto stack_check(lua_State* L, int arg = 1) -> std::enable_if_t<
+		meta_and_v<std::is_pointer<T>, detail::is_ref_value_ptr<std::remove_pointer_t<T>>>, T>
+	{
+		using type = typename std::remove_pointer_t<T>::element_type;
+		::luaL_checkudata(L, arg, get_class_name<type>());
 		return stack_get<T>(L, arg);
 	}
 }
