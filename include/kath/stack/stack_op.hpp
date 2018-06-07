@@ -106,6 +106,13 @@ namespace kath
 		auto ref_ptr = t.ref_from_this();
 		stack_push(L, std::move(ref_ptr));
 	}
+
+	template <typename T>
+	inline static auto stack_push(lua_State* L, T* ptr) -> disable_if_t<is_primitive_type_v<T>>
+	{
+		// pointer has no move semantic
+		stack_push(L, *ptr);
+	}
 }
 
 // stack get
@@ -116,17 +123,24 @@ namespace kath
 		template <typename T>
 		inline static auto stack_get_emplaced_userdata(lua_State* L, int index = -1)
 		{
-			// TODO ... check nullptr
-			return reinterpret_cast<T*>(::lua_touserdata(L, index));
+			auto ptr = ::lua_touserdata(L, index);
+			assert(ptr);
+			return reinterpret_cast<T*>(ptr);
 		}
 
 		template <typename T>
 		inline static auto stack_get_referenced_userdata(lua_State* L, int index = -1)
 		{
-			// TODO ... check nullptr
 			auto ptr = reinterpret_cast<T**>(::lua_touserdata(L, index));
+			assert(ptr && *ptr);
 			return *ptr;
-		} 
+		}
+
+		template <typename T>
+		using is_non_luac_callable = meta_and<is_callable<T>, negative<is_lua_cfunction<T>>>;
+
+		template <typename T>
+		inline constexpr bool is_non_luac_callable_v = is_non_luac_callable<T>::value;
 	}
 
 	template <typename T>
@@ -136,25 +150,25 @@ namespace kath
 	}
 
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_integral_v<T>, T>
+	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<is_integral_v<T>, T>
 	{
 		return static_cast<T>(::lua_tointegerx(L, index, nullptr));
 	}
 
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_floating_point_v<T>, T>
+	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<is_floating_point_v<T>, T>
 	{
 		return static_cast<T>(::lua_tonumberx(L, index, nullptr));
 	}
 
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_c_string_v<T>, char const*>
+	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<is_c_string_v<T>, char const*>
 	{
 		return ::lua_tolstring(L, index, nullptr);
 	}
 
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_string_buffer_v<T>, T>
+	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<is_string_buffer_v<T>, T>
 	{
 		size_t len { 0 };
 		auto ptr = ::lua_tolstring(L, index, &len);
@@ -162,28 +176,41 @@ namespace kath
 	}
 	
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_lua_cfunction_v<T>, lua_CFunction>
+	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<is_lua_cfunction_v<T>, lua_CFunction>
 	{
 		return ::lua_tocfunction(L, index);
 	}
 
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) noexcept 
-		-> std::enable_if_t<meta_and_v<kath::is_callable<T>, negative<is_lua_cfunction<T>>>, T*>
+	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<detail::is_non_luac_callable_v<T>, T&>
 	{
-		return detail::stack_get_emplaced_userdata<T>(L, index);
+		return *detail::stack_get_emplaced_userdata<T>(L, index);
 	}
 
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_value_type_v<T>, T*>
+	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<is_value_type_v<T>, T&>
 	{
-		return detail::stack_get_emplaced_userdata<T>(L, index);
+		return *detail::stack_get_emplaced_userdata<T>(L, index);
 	}
 
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) noexcept -> std::enable_if_t<is_reference_type_v<T>, T*>
+	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<is_reference_type_v<T>, T&>
 	{
-		return detail::stack_get_referenced_userdata<T>(L, index);
+		return *detail::stack_get_referenced_userdata<T>(L, index);
+	}
+
+	template <typename T>
+	inline static auto stack_get(lua_State* L, int index = -1) 
+		-> std::enable_if_t<meta_and_v<std::is_pointer<T>, is_value_type<std::remove_pointer_t<T>>>, T>
+	{
+		return detail::stack_get_emplaced_userdata<std::remove_pointer_t<T>>(L, index);
+	}
+
+	template <typename T>
+	inline static auto stack_get(lua_State* L, int index= - 1)
+		-> std::enable_if_t<meta_and_v<std::is_pointer<T>, is_reference_type<std::remove_pointer_t<T>>>, T>
+	{
+		return detail::stack_get_referenced_userdata<std::remove_pointer_t<T>>(L, index);
 	}
 }
 

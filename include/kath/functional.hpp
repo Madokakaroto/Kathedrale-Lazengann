@@ -105,6 +105,14 @@ namespace kath
                 return 1;
             }
         }
+
+        template <typename Tuple>
+        struct check_rvalue_reference;
+
+        template <typename ... Args>
+        struct check_rvalue_reference<std::tuple<Args...>>
+            : meta_or<std::is_rvalue_reference<Args>...>
+        {};
     }
 
 	template <typename Func>
@@ -116,6 +124,9 @@ namespace kath
 		using args_pack = typename callable_traits_t::args_pack;
 		static constexpr size_t arity = callable_traits_t::arity;
 
+        static_assert(negative_v<detail::check_rvalue_reference<args_pack>>, 
+            "lua does not support move semantic with cpp");
+
 	public:
 		static void stack_push_callable(lua_State* L, Func func)
 		{
@@ -126,15 +137,15 @@ namespace kath
 		static int invoke(lua_State* L)
 		{
 			using upvalue_placeholders::_1;
-			auto callable = stack_get<function_type>(L, _1);
+            auto& callable = stack_get<function_type>(L, _1);
 
             if constexpr(std::is_same_v<lua_CFunction, typename callable_traits_t::signature_type>)
             {
-                return (*callable)(L);
+                return callable(L);
             }
             else
             {
-                return detail::invoke_on_stack(L, *callable);
+                return detail::invoke_on_stack(L, callable);
             }
 		}
 
@@ -225,7 +236,7 @@ namespace kath
                 stack_guard guard{ L };
                 ::lua_getmetatable(L, arg);
                 fetch_field(L, "__name");
-                return stack_check<char const*>(L, -1);
+                return stack_get<char const*>(L, -1);
             }
             default:
                 return basic_type_name(type);
@@ -333,14 +344,14 @@ namespace kath
         {
             auto emplace_address = ::lua_newuserdata(L, sizeof(T));
             new (emplace_address) T{ std::forward<std::tuple_element_t<Is, Tuple>>(
-                stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 1))... };
+                stack_get<std::tuple_element_t<Is, Tuple>>(L, Is + 1))... };
         }
 
         template <typename T, typename RefCounter, typename Tuple, size_t ... Is>
         inline static void make_ref_object(lua_State* L, std::index_sequence<Is...>)
         {
             auto ptr = make_ref<T, RefCounter>(std::forward<std::tuple_element_t<Is, Tuple>>(
-                stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 1))...);
+                stack_get<std::tuple_element_t<Is, Tuple>>(L, Is + 1))...);
             
             detail::stack_push_userdata(L, std::move(ptr));
         }
