@@ -35,4 +35,10 @@ namespace kath
 	class table_expression;
 
 	class state;
+
+	namespace ext
+	{
+		template <typename T, typename = void>
+		struct manipulate_type;
+	}
 }

@@ -230,8 +230,11 @@ namespace kath
 	namespace ext 
 	{
 		// for extention
-		template <typename T, typename = void>
-		struct is_manipulated_type : std::false_type {};
+		template <typename T, typename>
+		struct manipulate_type
+		{
+			static constexpr bool value = false;
+		};
 	}
 
 	template <typename T, typename = void>
@@ -261,7 +264,10 @@ namespace kath
 
 	// type that will be specially treated
 	template <typename T>
-	using is_manipulated_type = ext::is_manipulated_type<T>;
+	struct is_manipulated_type 
+	{
+		static constexpr bool value = ext::manipulate_type<T>::value;
+	};
 
 	template <typename T>
 	inline constexpr bool is_manipulated_type_v = is_manipulated_type<T>::value;
