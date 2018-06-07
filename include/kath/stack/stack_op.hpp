@@ -188,7 +188,8 @@ namespace kath
 	}
 
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<is_value_type_v<T>, T&>
+	inline static auto stack_get(lua_State* L, int index = -1) 
+		-> std::enable_if_t<meta_or_v<is_value_type<T>, detail::is_ref_value_ptr<T>>, T&>
 	{
 		return *detail::stack_get_emplaced_userdata<T>(L, index);
 	}
@@ -199,19 +200,28 @@ namespace kath
 		return *detail::stack_get_referenced_userdata<T>(L, index);
 	}
 
+	// get pointer for value type userdata
 	template <typename T>
 	inline static auto stack_get(lua_State* L, int index = -1) 
-		-> std::enable_if_t<meta_and_v<std::is_pointer<T>, is_value_type<std::remove_pointer_t<T>>>, T>
+		-> std::enable_if_t<meta_and_v<std::is_pointer<T>, 
+			meta_or<is_value_type<std::remove_pointer_t<T>>, detail::is_ref_value_ptr<std::remove_pointer_t<T>>>>, T>
 	{
 		return detail::stack_get_emplaced_userdata<std::remove_pointer_t<T>>(L, index);
 	}
 
+	// get pointer for reference type userdata
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index= - 1)
+	inline static auto stack_get(lua_State* L, int index = - 1)
 		-> std::enable_if_t<meta_and_v<std::is_pointer<T>, is_reference_type<std::remove_pointer_t<T>>>, T>
 	{
 		return detail::stack_get_referenced_userdata<std::remove_pointer_t<T>>(L, index);
 	}
+
+	template <typename T>
+	inline static decltype(auto) stack_get(lua_State* L, std::enable_if_t<std::is_reference_v<T>, int> index = -1)
+	{
+		return stack_get<std::remove_reference_t<T>>(L, index);
+	} 
 }
 
 // stack check

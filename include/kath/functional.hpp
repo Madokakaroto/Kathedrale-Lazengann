@@ -137,15 +137,16 @@ namespace kath
 		static int invoke(lua_State* L)
 		{
 			using upvalue_placeholders::_1;
-            auto& callable = stack_get<function_type>(L, _1);
+            auto callable = detail::stack_get_emplaced_userdata<function_type>(L, _1);
+            assert(callable);
 
             if constexpr(std::is_same_v<lua_CFunction, typename callable_traits_t::signature_type>)
             {
-                return callable(L);
+                return (*callable)(L);
             }
             else
             {
-                return detail::invoke_on_stack(L, callable);
+                return detail::invoke_on_stack(L, *callable);
             }
 		}
 
@@ -163,9 +164,7 @@ namespace kath
 				::lua_createtable(L, 0, 1);
 				stack_push(L, [](lua_State* L) -> int
 				{
-					// TODO ... check?
 					auto ptr = detail::stack_get_emplaced_userdata<orginal_function_type>(L, 1);
-					assert(ptr);
 					ptr->~orginal_function_type();
 					return 0;
 				});
