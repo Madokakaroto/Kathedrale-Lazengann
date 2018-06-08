@@ -139,27 +139,30 @@ namespace kath
 	}
 
 	template <typename T, typename = void>
-	struct element_type
+	struct traits_value_type
 	{
 		using type = void;
 		static constexpr bool value = false;
 	};
 
 	template <typename T>
-	struct element_type<T, std::void_t<typename T::element_type>>
+	struct traits_value_type<T, std::void_t<typename T::value_type>>
 	{
-		using type = element_type;
+		using type = typename T::value_type;
 		static constexpr bool value = true;
 	};
 
 	template <typename T>
-	using element_type_t = typename element_type<T>::type;
+	using traits_value_type_t = typename traits_value_type<T>::type;
+
+	template <typename T>
+	inline constexpr bool has_value_type_v = traits_value_type<T>::value;
 
 	// std::string with char as element_type
 	template <typename T>
 	using is_std_string = meta_and<
 		detail::is_instance_of_std_string<T>, 
-		std::is_same<element_type_t<T>, char> 
+		std::is_same<traits_value_type_t<T>, char> 
 	>;
 
 	template <typename T>
@@ -169,7 +172,7 @@ namespace kath
 	template <typename T>
 	using is_string_view = meta_and<
 		detail::is_instance_of_std_string_view<T>,
-		std::is_same<element_type_t<T>, char>
+		std::is_same<traits_value_type_t<T>, char>
 	>;
 
 	template <typename T>
@@ -179,7 +182,7 @@ namespace kath
 	template <typename T>
 	using is_string_buffer = meta_and<
 		meta_or<is_std_string<T>, is_string_view<T>>,
-		std::is_same<element_type_t<T>, char>
+		std::is_same<traits_value_type_t<T>, char>
 	>;
 
 	template <typename T>
@@ -246,6 +249,7 @@ namespace kath
 	namespace ext 
 	{
 		// for extention
+		// and manipulate type can only have value semantic
 		template <typename T, typename>
 		struct manipulate_type
 		{

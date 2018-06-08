@@ -56,15 +56,19 @@ using weak_ptr = kath::weak_ptr<T, kath::fast_refcount>;
 
 int main(void)
 {
-    //int value = std::is_same<kath::callable_traits<kath::overload_functor>::signature_type, lua_CFunction>::value;
+    //auto r =  kath::is_string_view<std::string_view>::value;
+    //r = kath::detail::is_instance_of_std_string<std::string>::value;
 
-    //std::cout << value << std::endl;
+    //std::cout << r << std::endl;
+
     //return 0;
     
     try {
 	/*kath::state state;
 	state["key"] = 1024;
 	int a = state["key"];*/
+
+    //kath::steady_table t =  state["key1"]["key2"]["key3"];
 
     //std::cout << "a = " << a << std::endl;
 
