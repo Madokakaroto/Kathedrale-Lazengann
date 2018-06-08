@@ -41,6 +41,15 @@ namespace kath
 
 		template <typename T>
 		using traits_element_type_t = typename traits_element_type<T>::type;
+
+		template <typename T>
+		using is_pointer_exclude_type = meta_and<
+			is_primitive_type<T>,
+			negative<is_c_string<T>>
+		>;
+
+		template <typename T>
+		inline constexpr bool is_pointer_exclude_type_v = is_pointer_exclude_type<T>::value;
     }
 
 	inline static void stack_push(lua_State* L, nil_t = nil)
@@ -108,7 +117,14 @@ namespace kath
 	}
 
 	template <typename T>
-	inline static auto stack_push(lua_State* L, T* ptr) -> disable_if_t<is_primitive_type_v<T>>
+	inline static auto stack_push(lua_State* L, T&& t) -> std::enable_if_t<is_manipulated_type_v<remove_rcv_t<T>>>
+	{
+		using manipulate_type_t = ext::manipulate_type<remove_rcv_t<T>>;
+		manipulate_type_t::stack_push(std::forward<T>(t));
+	}
+
+	template <typename T>
+	inline static auto stack_push(lua_State* L, T* ptr) -> disable_if_t<detail::is_pointer_exclude_type_v<T>>
 	{
 		// pointer has no move semantic
 		stack_push(L, *ptr);
@@ -200,6 +216,12 @@ namespace kath
 		return *detail::stack_get_referenced_userdata<T>(L, index);
 	}
 
+	template <typename T>
+	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<is_manipulated_type_v<T>, T>
+	{
+		return ext::manipulate_type<T>::stack_get(L, index); 
+	}
+
 	// get pointer for value type userdata
 	template <typename T>
 	inline static auto stack_get(lua_State* L, int index = -1) 
@@ -279,6 +301,12 @@ namespace kath
 	inline static decltype(auto) stack_check(lua_State* L, std::enable_if_t<std::is_reference_v<T>, int> arg = 1)
 	{
 		return stack_check<std::remove_reference_t<T>>(L, arg);
+	}
+
+	template <typename T>
+	inline static auto stack_check(lua_State* L, int arg = 1) -> std::enable_if_t<is_manipulated_type_v<T>, T>
+	{
+		return ext::manipulate_type<T>::stack_check(L, arg); 
 	}
 
 	// stack check for pointer of userdata

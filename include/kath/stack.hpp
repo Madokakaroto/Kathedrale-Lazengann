@@ -1,8 +1,6 @@
 #pragma once
 
 #include "stack/stack_op.hpp"
-#include "stack/stack_op_ext.hpp"
-
 
 // fetch
 namespace kath
@@ -196,3 +194,5 @@ namespace kath
 
 	//struct 
 }
+
+#include "stack/stack_op_ext.hpp"
