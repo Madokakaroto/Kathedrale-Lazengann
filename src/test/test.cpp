@@ -179,5 +179,14 @@ int main(void)
         auto a = kath::stack_check<int&>(L);
     }
 
+    // test multi return 
+    {
+        kath::is_valid_tuple<int>::value;
+        kath::is_valid_tuple<std::pair<int, bool>>::value;
+        kath::is_valid_tuple<std::array<int, 5>>::value;
+        kath::is_valid_tuple<std::tuple<>>::value;
+        kath::is_valid_tuple<std::tuple<int, double>>::value;
+    }
+
 	return 0;
 }

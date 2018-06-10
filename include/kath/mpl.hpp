@@ -367,6 +367,22 @@ namespace kath
 	using exract_key_type_t = typename extract_key_type<Key>::type;
 }
 
+// traits for tuple
+namespace kath
+{
+    template <typename T, typename = void>
+    struct is_valid_tuple : std::false_type{};
+
+    template <typename T>
+    struct is_valid_tuple<T, std::void_t<decltype(std::tuple_size<T>::value)>>
+    {
+        static constexpr bool value = std::tuple_size_v<T> > 0;
+    };
+
+    template <typename T>
+    inline constexpr bool is_valid_tuple_v = is_valid_tuple<T>::value;
+}
+
 // callable traits
 namespace kath
 {
