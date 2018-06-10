@@ -347,4 +347,35 @@ namespace kath
 	{
 		::lua_pushvalue(L, index);
 	}
+
+    namespace detail
+    {
+        template <size_t Index, typename Tuple, typename 
+            Type =  decltype(std::get<Index>(std::declval<Tuple>()))>
+        inline static bool stack_forward_push(lua_State* L, Tuple&& t)
+        {
+            stack_push(L, std::forward<Type>(std::get<Index>(std::declval<Tuple>())));
+            return true;
+        }
+
+        template <typename T, size_t ... Is>
+        inline static int stack_push_result_impl(lua_State* L, T&& t, std::index_sequence<Is...>)
+        {
+            swallow_t{ stack_forward_push<Is>(L, std::forward<T>(t))... };
+            return sizeof...(Is);
+        }
+    }
+
+    template <typename T, typename Type = std::remove_reference_t<T>>
+    inline static auto stack_push_result(lua_State* L, T&& t) -> std::enable_if_t<is_valid_tuple_v<Type>, int>
+    {
+        return detail::stack_push_result_impl(L, std::forward<T>(t), std::make_index_sequence<std::tuple_size<Type>>{});
+    }
+    
+    template <typename T, typename Type = std::remove_reference_t<T>>
+    inline static auto stack_push_result(lua_State* L, T&& t) -> disable_if_t<is_valid_tuple_v<Type>, int>
+    {
+        stack_push(L, std::forward<T>(t));
+        return 1;
+    }
 }

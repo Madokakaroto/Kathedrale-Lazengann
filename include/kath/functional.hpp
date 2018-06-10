@@ -101,8 +101,7 @@ namespace kath
             else
             {
                 auto result = invoke_on_stack_impl(L, f);
-                stack_push(L, std::move(result));
-                return 1;
+                return stack_push_result(L, std::move(result));
             }
         }
 
