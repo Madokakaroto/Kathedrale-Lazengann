@@ -32,7 +32,10 @@ namespace kath
 	class base_expression;
 
 	template <typename Expr, typename Key>
-	class table_expression;
+	class index_expression;
+
+	template <typename Expr>
+	class table_proxy;
 
 	class state;
 
