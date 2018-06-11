@@ -350,18 +350,18 @@ namespace kath
 		template <typename Key, typename = void>
 		struct extract_key_type_impl
 		{
-			using type = remove_rcv_t<Key>;
+			using type = std::remove_cv_t<Key>;
 		};
 
 		template <typename Key>
 		struct extract_key_type_impl<Key, std::enable_if_t<is_char_array_v<Key>>>
 		{
-			using type = std::add_lvalue_reference_t<std::add_const_t<remove_rcv_t<Key>>>;
+			using type = std::add_lvalue_reference_t<std::add_const_t<std::remove_cv_t<Key>>>;
 		};
 	}
 
 	template <typename Key>
-	struct extract_key_type : detail::extract_key_type_impl<remove_rcv_t<Key>>{};
+	struct extract_key_type : detail::extract_key_type_impl<std::remove_reference_t<Key>>{};
 
 	template <typename Key>
 	using exract_key_type_t = typename extract_key_type<Key>::type;

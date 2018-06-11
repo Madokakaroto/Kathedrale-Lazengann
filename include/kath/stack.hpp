@@ -15,13 +15,8 @@ namespace kath
 	}
 
 	template <typename Key>
-	inline static auto fetch_global(lua_State* L, Key const& key) -> std::enable_if_t<is_c_string_v<Key>, basic_type>
-	{
-		return basic_type{ ::lua_getglobal(L, key) };
-	}
-
-	template <typename Key>
-	inline static auto fetch_global(lua_State* L, Key const& key) -> std::enable_if_t<is_char_array_v<Key>, basic_type>
+	inline static auto fetch_global(lua_State* L, Key const& key) 
+		-> std::enable_if_t<meta_or_v<is_c_string<Key>, is_char_array<Key>>, basic_type>
 	{
 		return basic_type{ ::lua_getglobal(L, key) };
 	}
@@ -43,14 +38,7 @@ namespace kath
 
 	template <typename Key>
 	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1) 
-		-> std::enable_if_t<is_c_string_v<Key>, basic_type>
-	{
-		return basic_type{ ::lua_getfield(L, index, key) };
-	}
-
-	template <typename Key>
-	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1) 
-		-> std::enable_if_t<is_char_array_v<Key>, basic_type>
+		-> std::enable_if_t<meta_or_v<is_c_string<Key>, is_char_array<Key>>, basic_type>
 	{
 		return basic_type{ ::lua_getfield(L, index, key) };
 	}
@@ -63,8 +51,15 @@ namespace kath
 	}
 
 	template <typename Key>
+	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1)
+		-> std::enable_if_t<is_string_view_v<Key>, basic_type>
+	{
+		return basic_type{ ::lua_getfield(L, index, key.data()) };
+	}
+
+	template <typename Key>
 	inline static auto fetch_field(lua_State* L, Key const& key, int index = -1) 
-		-> std::enable_if_t<meta_or_v<is_string_view<Key>, is_floating_point<Key>, is_bool<Key>>, basic_type>
+		-> std::enable_if_t<meta_or_v<is_floating_point<Key>, is_bool<Key>>, basic_type>
 	{
 		stack_push(L, key);
 		return basic_type{ ::lua_gettable(L, index - 1) };

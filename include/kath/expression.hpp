@@ -3,106 +3,123 @@
 namespace kath
 {
 	template <typename Expr>
-	inline decltype(auto) extrac_expression(base_expression<Expr>& base_expr) noexcept
+	inline static decltype(auto) extrac_expression(base_expression<Expr>& base_expr) noexcept
 	{
 		return static_cast<Expr&>(base_expr);
 	}
 
 	template <typename Expr>
-	inline decltype(auto) extrac_expression(base_expression<Expr> const& base_expr) noexcept
+	inline static decltype(auto) extrac_expression(base_expression<Expr> const& base_expr) noexcept
 	{
 		return static_cast<Expr const&>(base_expr);
 	}
-
+	
 	template <typename Expr>
 	class base_expression
 	{
 	public:
 		static_assert(meta_and_v<negative<std::is_pointer<Expr>>, negative<std::is_reference<Expr>>>);
-
 		using expression_type = Expr;
 		using const_expression = std::add_const_t<Expr>;
 
-		template <typename Key, typename = std::enable_if_t<is_key_type_v<Key>>>
-		auto operator[] (Key&& key) const noexcept
+		template <typename Key>
+		auto access_field(lua_State* L, Key&& key) const noexcept
 		{
-			// if the type of AnotherKey is std string compatible 
-			using expression_t = table_expression<const_expression, exract_key_type_t<Key>>;
-			return expression_t{ extrac_expression(*this), std::forward<Key>(key) };
+			using index_expression_t = index_expression<Expr, exract_key_type_t<Key>>;
+			using table_proxy_t = table_proxy<index_expression_t>;
+			return table_proxy_t{ L, index_expression_t{ extrac_expression(*this), std::forward<Key>(key) } };
 		}
 
 	protected:
-		base_expression() noexcept = default;
+		base_expression() = default;
 	};
 
-
-	// Key type has no interest on Key type calculation
-	template <typename Expr, typename Key>
-	class table_expression : public base_expression<table_expression<Expr, Key>>
+	template <typename Expr>
+	class table_proxy
 	{
 	public:
-		using base_type = base_expression<table_expression<Expr, Key>>;
+		static_assert(negative_v<meta_or<std::is_pointer<Expr>, std::is_reference<Expr>>>);
+		static_assert(std::is_base_of_v<base_expression<Expr>, Expr>);
+
+		table_proxy(lua_State* L, Expr const& expr) noexcept
+			: L(L)
+			, expr_(expr)
+		{
+		}
+
+		template <typename Value>
+		operator Value() const
+		{
+			expr_.fetch(L);
+			return kath::stack_get<Value>(L);
+		}
+
+		template <typename Value>
+		table_proxy& operator= (Value&& v)
+		{
+			expr_.set_field(L, std::forward<Value>(v));
+			return *this;
+		}
+
+		template <typename Key>
+		auto operator[](Key&& key) const noexcept
+		{
+			return expr_.access_field(L, std::forward<Key>(key));
+		}
+
+	private:
+		lua_State*		L;
+		Expr const&		expr_;
+	};
+
+	template <typename Expr, typename Key>
+	class index_expression : public base_expression<index_expression<Expr, Key>>
+	{
+	public:
 		using expression_type = Expr;
 		using const_expression = std::add_const_t<Expr>;
 		using key_type = Key;
 
 		template <typename OtherExpr, typename Otherkey>
-		friend class table_expression;
+		friend class index_expression;
 
-		table_expression(const_expression const& expr, key_type key) noexcept
-			: base_type()
-			, expr_(expr)
+		index_expression(const_expression& expr, key_type key)
+			: expr_(expr)
 			, key_(std::move(key))
+		{}
+
+		~index_expression()
 		{
+
 		}
 
-		// perform the "table[key_] = value" semantic
-		template <typename Value>
-		void operator= (Value&& value) const
+		void fetch(lua_State* L) const
 		{
-			set(std::forward<Value>(value));
+			expr_.fetch_field(L, key_);
 		}
 
-		// perform the value = "table[key_]" semantic
-		template <typename Value>
-		operator Value() const
+		template <typename K>
+		void fetch_field(lua_State* L, K const& key) const
 		{
-			auto L = get();
-			return stack_get<Value>(L);
+			fetch(L);
+			kath::fetch_field(L, key);
 		}
 
-		using base_type::operator[];
-
-	private:
-		template <typename OtherKey>
-		auto get(OtherKey const& key) const
+		template <typename K, typename Value>
+		void set_field(lua_State* L, K const& key, Value&& value) const
 		{
-			auto L = get();
-			fetch_field(L, key);
-			return L;
-		}
-
-		auto get() const
-		{
-			return expr_.get(key_);
-		}
-
-		template <typename OtherKey, typename Value>
-		auto set(OtherKey const& key, Value&& value) const
-		{
-			auto L = get();
-			set_field(L, key, std::forward<Value>(value));
-			return L;
+			fetch(L);
+			kath::set_field(L, key, std::forward<Value>(value));
 		}
 
 		template <typename Value>
-		auto set(Value&& value) const
+		void set_field(lua_State* L, Value&& value) const
 		{
-			return expr_.set(key_, std::forward<Value>(value));
+			expr_.set_field(L, key_, std::forward<Value>(value));
 		}
 
 	private:
-		const_expression const&	expr_;
-		key_type				key_;
+		const_expression&	expr_;
+		key_type			key_;
 	};
 }

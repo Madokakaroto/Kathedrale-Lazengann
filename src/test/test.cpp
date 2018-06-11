@@ -68,25 +68,31 @@ int main(void)
 	state["key"] = 1024;
 	int a = state["key"];*/
 
-    //kath::steady_table t =  state["key1"]["key2"]["key3"];
+		char* key = new char[4];
+		key[0] = 'k';
+		key[1] = 'e';
+		key[2] = 'y';
+		key[3] = '\0';
 
-    //std::cout << "a = " << a << std::endl;
+		kath::lua lua;
+		lua["key"] = 1024;
+		int a = lua[key];
 
-	std::cout<< "Hello ...."  << std::endl; 
+		std::cout<< "Hello ...."  << std::endl; 
     
-    {
-        auto ptr = new test::foo{};
-        ref_count_ptr<test::foo> sptr1{ ptr };
-    }
+		{
+			auto ptr = new test::foo{};
+			ref_count_ptr<test::foo> sptr1{ ptr };
+		}
 
-    {
-        auto ptr = new test::foo const{};
-        ref_count_ptr<test::foo const> rptr1{ ptr };
-        auto rptr2 = ptr->ref_from_this();
-        auto wptr = ptr->weak_from_this();
-    }
+		{
+			auto ptr = new test::foo const{};
+			ref_count_ptr<test::foo const> rptr1{ ptr };
+			auto rptr2 = ptr->ref_from_this();
+			auto wptr = ptr->weak_from_this();
+		}
 
-    std::cout << "End...." << std::endl;
+		std::cout << "End...." << std::endl;
     }
     catch(std::exception const& e)
     {
