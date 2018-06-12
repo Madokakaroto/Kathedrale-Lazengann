@@ -351,10 +351,10 @@ namespace kath
     namespace detail
     {
         template <size_t Index, typename Tuple, typename 
-            Type =  decltype(std::get<Index>(std::declval<Tuple>()))>
+            Type = decltype(std::get<Index>(std::declval<Tuple>()))>
         inline static bool stack_forward_push(lua_State* L, Tuple&& t)
         {
-            stack_push(L, std::forward<Type>(std::get<Index>(std::declval<Tuple>())));
+            stack_push(L, std::forward<Type>(std::get<Index>(t)));
             return true;
         }
 
@@ -369,7 +369,7 @@ namespace kath
     template <typename T, typename Type = std::remove_reference_t<T>>
     inline static auto stack_push_result(lua_State* L, T&& t) -> std::enable_if_t<is_valid_tuple_v<Type>, int>
     {
-        return detail::stack_push_result_impl(L, std::forward<T>(t), std::make_index_sequence<std::tuple_size<Type>>{});
+        return detail::stack_push_result_impl(L, std::forward<T>(t), std::make_index_sequence<std::tuple_size_v<Type>>{});
     }
     
     template <typename T, typename Type = std::remove_reference_t<T>>
@@ -378,4 +378,10 @@ namespace kath
         stack_push(L, std::forward<T>(t));
         return 1;
     }
+
+	template <typename T, typename Type = std::remove_reference_t<T>>
+	inline static auto stack_push_args_pack(lua_State* L, T&& t)
+	{
+		return detail::stack_push_result_impl(L, std::forward<T>(t), std::make_index_sequence<std::tuple_size_v<Type>>{});
+	}
 }
