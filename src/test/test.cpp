@@ -54,6 +54,15 @@ using ref_count_ptr = kath::ref_count_ptr<T, kath::fast_refcount>;
 template <typename T>
 using weak_ptr = kath::weak_ptr<T, kath::fast_refcount>;
 
+template <typename ... Rets, typename ... Args>
+auto pcall(Args&& ... args)
+{
+	auto a = sizeof...(Rets);
+	auto b = sizeof...(Args);
+
+	return std::tuple<Rets...>{};
+}
+
 int main(void)
 {
     //auto r =  kath::is_string_view<std::string_view>::value;
@@ -77,6 +86,8 @@ int main(void)
 		kath::lua lua;
 		lua["key"] = 1024;
 		int a = lua[key];
+
+		delete[] key;
 
 		std::cout<< "Hello ...."  << std::endl; 
     
@@ -194,5 +205,17 @@ int main(void)
         kath::is_valid_tuple<std::tuple<int, double>>::value;
     }
 
+	// test pcall
+	{
+		kath::lua lua;
+		int a = lua["function1"]();
+
+		std::tuple<int, int> r = lua["function2"]();
+
+		int c, b;
+		std::tie(a, b) = r;
+
+		//auto[r1, r2, r3] = lua["function3"]<int, double, float>(1, 2, 3);
+	}
 	return 0;
 }

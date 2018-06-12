@@ -377,12 +377,16 @@ namespace kath
 namespace kath
 {
     template <typename T, typename = void>
-    struct is_valid_tuple : std::false_type{};
+    struct is_valid_tuple : std::false_type
+	{
+		static constexpr size_t size = 0;
+	};
 
     template <typename T>
     struct is_valid_tuple<T, std::void_t<decltype(std::tuple_size<T>::value)>>
     {
-        static constexpr bool value = std::tuple_size_v<T> > 0;
+		static constexpr size_t size = std::tuple_size_v<T>;
+        static constexpr bool value = size > 0;
     };
 
     template <typename T>

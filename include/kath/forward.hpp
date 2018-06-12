@@ -22,7 +22,7 @@ namespace kath
 	template <typename T, typename RefCounter>
 	class weak_ptr; 
 
-	template <typename Func>
+	template <typename ... Rets>
 	struct lua_callable;
 
 	template <typename Func>
@@ -33,6 +33,9 @@ namespace kath
 
 	template <typename Expr, typename Key>
 	class index_expression;
+
+	template <typename Expr, typename Invoker, typename ... Args>
+	class invoke_expression;
 
 	template <typename Expr, typename Key>
 	class table_proxy;

@@ -35,9 +35,9 @@ namespace kath
 	class global_table : base_expression<global_table>
 	{
 		friend class lua;
-	protected:
 		using base_type = base_expression<global_table>;
 
+	protected:
 		global_table() = default;
 		~global_table() = default;
 		global_table(global_table const&) = delete;

@@ -382,5 +382,81 @@ namespace kath
 // lua callable
 namespace kath
 {
-	
+	namespace detail
+	{
+		template <typename ... Rets>
+		struct traits_result_type;
+
+		template <typename T>
+		struct traits_result_type<T>
+		{
+			using type = T;
+		};
+
+		template <typename T1, typename T2, typename ... Rests>
+		struct traits_result_type<T1, T2, Rests...>
+		{
+			static_assert(meta_and_v<negative<std::is_void<T1>>,
+				negative<std::is_void<T2>>, negative<std::is_void<Rests>>...>);
+			using type = std::tuple<T1, T2, Rests...>;
+		};
+
+		template <>
+		struct traits_result_type<>
+		{
+			using type = void;
+		};
+
+		template <typename Ret, size_t ... Is>
+		static auto stack_multi_result(lua_State* L, int begin, std::index_sequence<Is...>)
+		{
+			//return std::tuple_cat(std::move(stack_check<std::tuple_element_t<Is, Ret>>(L, Is + begin))...);
+			return std::make_tuple(std::move(stack_check<std::tuple_element_t<Is, Ret>>(L, Is + begin))...);
+		}
+	}
+
+	struct lua_pcall
+	{
+		template <typename ArgsPack>
+		static void do_call_impl(lua_State* L, ArgsPack&& args_pack, int ret_count)
+		{
+			assert(ret_count >= 0);
+			auto arity = stack_push_args_pack(L, std::forward<ArgsPack>(args_pack));
+			lua_pcall(L, arity, ret_count, 0);
+		}
+
+		template <typename Ret, typename ArgsPack>
+		static auto do_call_multi_return(lua_State* L, ArgsPack&& args_pack)
+		{
+			auto begin = ::lua_gettop(L) + 1;
+			do_call_impl(L, std::forward<ArgsPack>(args_pack), is_valid_tuple<Ret>::size);
+			return detail::stack_multi_result<Ret>(L, begin, std::make_index_sequence<is_valid_tuple<Ret>::size>{});
+		}
+
+		template <typename Ret, typename ArgsPack>
+		static auto do_call_single_return(lua_State* L, ArgsPack&& args_pack)
+		{
+			auto begin = ::lua_gettop(L) + 1;
+			do_call_impl(L, std::forward<ArgsPack>(args_pack), 1);
+			return stack_check<Ret>(L, begin);
+		}
+
+		template <typename Ret, typename ArgsPack>
+		static auto do_call(lua_State* L, ArgsPack&& args_pack)
+		{
+			using args_pack_t = std::remove_reference_t<ArgsPack>;
+			if constexpr(std::is_void_v<Ret>)
+			{
+				do_call_impl(L, std::forward<ArgsPack>(args_pack), 0);
+			}
+			else if constexpr(is_valid_tuple_v<Ret>)
+			{
+				return do_call_multi_return<Ret>(L, std::forward<ArgsPack>(args_pack));
+			}
+			else
+			{
+				return do_call_single_return<Ret>(L, std::forward<ArgsPack>(args_pack));
+			}
+		}
+	};
 }

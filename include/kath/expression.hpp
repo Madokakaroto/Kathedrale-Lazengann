@@ -30,8 +30,26 @@ namespace kath
 			return table_proxy_t{ L, extrac_expression(*this), std::forward<forward_type>(key) };
 		}
 
+		base_expression(base_expression const&) = delete;
+		base_expression& operator= (base_expression const&) = delete;
+
 	protected:
 		base_expression() = default;
+	};
+
+	template <typename Expr>
+	class terminate_expression
+	{
+	public:
+		static_assert(meta_and_v<negative<std::is_pointer<Expr>>, negative<std::is_reference<Expr>>>);
+		using expression_type = Expr;
+		using const_expression = std::add_const_t<Expr>;
+
+		terminate_expression(terminate_expression const&) = delete;
+		terminate_expression& operator=(terminate_expression const&) = delete;
+
+	protected:
+		terminate_expression() = default;
 	};
 
 	template <typename Expr, typename Key>
@@ -82,6 +100,54 @@ namespace kath
 		key_type			key_;
 	};
 
+	template <typename Expr, typename Invoker, typename ... Args>
+	class invoke_expression : public terminate_expression<invoke_expression<Expr, Invoker>>
+	{
+	public:
+		using expression_type = Expr;
+		using const_expression = std::add_const_t<Expr>;
+		using tuple_type = std::tuple<Args...>;
+	
+		invoke_expression(lua_State* L, const_expression& expr, Args ... args)
+			: L(L)
+			, expr_(expr)
+			, tuple_(std::forward_as_tuple(args...))
+			, dismiss_(false)
+		{
+		}
+
+		~invoke_expression()
+		{
+			if (!dismiss_)
+			{
+				call<void>();
+			}
+		}
+	
+		template <typename Ret>
+		operator Ret() const
+		{
+			return call<Ret>();
+		}
+
+	private:
+		template <typename Ret>
+		auto call() const
+		{
+			assert(!dismiss_);
+			dismiss_ = true;
+
+			expr_.fetch(L);
+			return Invoker::template do_call<Ret>(L, tuple_);
+		}
+	
+	private:
+		lua_State*			L;
+		const_expression&	expr_;
+		tuple_type			tuple_;
+		mutable bool		dismiss_;
+	};
+
 	template <typename Expr, typename Key>
 	class table_proxy
 	{
@@ -115,6 +181,13 @@ namespace kath
 		auto operator[](Key&& key) const noexcept
 		{
 			return expr_.access_field(L, std::forward<Key>(key));
+		}
+
+		template <typename ... Args>
+		auto operator() (Args&& ... args) const noexcept
+			->  invoke_expression<index_expression_t, lua_pcall, Args...>
+		{
+			return { L, expr_, std::forward<Args>(args)... };
 		}
 
 	private:
