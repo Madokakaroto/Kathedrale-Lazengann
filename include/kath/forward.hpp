@@ -34,7 +34,7 @@ namespace kath
 	template <typename Expr, typename Key>
 	class index_expression;
 
-	template <typename Expr>
+	template <typename Expr, typename Key>
 	class table_proxy;
 
 	class state;

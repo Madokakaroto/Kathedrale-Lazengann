@@ -34,24 +34,20 @@ namespace kath
 
 	class global_table : base_expression<global_table>
 	{
+		friend class lua;
 	protected:
 		using base_type = base_expression<global_table>;
 
 		global_table() = default;
-		~global_table()
-		{
-			auto a = 1;
-		}
+		~global_table() = default;
 		global_table(global_table const&) = delete;
 		global_table& operator=(global_table const&) = delete;
 
 	public:
 		template <typename Key, typename = std::enable_if_t<is_string_v<std::remove_reference_t<Key>>>>
-		static auto access_field(lua_State* L, Key&& key) noexcept
+		auto access_field(lua_State* L, Key&& key) const noexcept
 		{
-			using index_expression_t = index_expression<global_table, exract_key_type_t<Key>>;
-			using table_proxy_t = table_proxy<index_expression_t>;
-			return table_proxy_t{ L, index_expression_t{ global_table{}, std::forward<Key>(key) } };
+			return base_type::access_field(L, std::forward<Key>(key));
 		}
 
 		template <typename Key>
@@ -81,11 +77,11 @@ namespace kath
 		template <typename Key>
 		auto operator[] (Key&& key) noexcept
 		{
-			//return this->access_field(s_.get_state(), std::forward<Key>(key));
-			return global_table::access_field(s_.get_state(), std::forward<Key>(key));
+			return global_.access_field(s_.get_state(), std::forward<Key>(key));
 		}
 
 	private:
 		state			s_;
+		global_table	global_;
 	};
 }
