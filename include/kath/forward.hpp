@@ -40,6 +40,9 @@ namespace kath
 	template <typename Expr, typename Key>
 	class table_proxy;
 
+    template <typename ... Args>
+    class tuple;
+
 	class state;
 
 	namespace ext

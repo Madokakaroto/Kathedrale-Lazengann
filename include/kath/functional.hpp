@@ -441,21 +441,23 @@ namespace kath
 			return stack_check<Ret>(L, begin);
 		}
 
-		template <typename Ret, typename ArgsPack>
-		static auto do_call(lua_State* L, ArgsPack&& args_pack)
+		template <typename ... Rets, typename ArgsPack>
+		static decltype(auto) do_call(lua_State* L, ArgsPack&& args_pack)
 		{
 			using args_pack_t = std::remove_reference_t<ArgsPack>;
-			if constexpr(std::is_void_v<Ret>)
+            using result_type = typename detail::traits_result_type<Rets...>::type;
+
+			if constexpr(std::is_void_v<result_type>)
 			{
 				do_call_impl(L, std::forward<ArgsPack>(args_pack), 0);
 			}
-			else if constexpr(is_valid_tuple_v<Ret>)
+			else if constexpr(is_valid_tuple_v<result_type>)
 			{
-				return do_call_multi_return<Ret>(L, std::forward<ArgsPack>(args_pack));
+				return do_call_multi_return<result_type>(L, std::forward<ArgsPack>(args_pack));
 			}
 			else
 			{
-				return do_call_single_return<Ret>(L, std::forward<ArgsPack>(args_pack));
+				return do_call_single_return<result_type>(L, std::forward<ArgsPack>(args_pack));
 			}
 		}
 	};
