@@ -30,9 +30,6 @@ namespace kath
 			return table_proxy_t{ L, extrac_expression(*this), std::forward<forward_type>(key) };
 		}
 
-		base_expression(base_expression const&) = delete;
-		base_expression& operator= (base_expression const&) = delete;
-
 	protected:
 		base_expression() = default;
 	};
@@ -95,11 +92,21 @@ namespace kath
 			expr_.set_field(L, key_, std::forward<Value>(value));
 		}
 
+        template <typename ... Rets, typename ... Args>
+        decltype(auto) pcall(lua_State* L, Args&& ... args) const
+        {
+            using result_type = std::tuple<Rets...>;
+
+            fetch(L);
+            return lua_pcall::do_call<result_type>(L, std::forward_as_tuple(std::forward<Args>(args)...));
+        }
+
 	private:
 		const_expression&	expr_;
 		key_type			key_;
 	};
 
+    // lazy invoke
 	template <typename Expr, typename Invoker, typename ... Args>
 	class invoke_expression : public terminate_expression<invoke_expression<Expr, Invoker>>
 	{
@@ -124,7 +131,7 @@ namespace kath
 			}
 		}
 	
-		template <typename Ret>
+		template <typename Ret, typename = disable_if_t<is_instance_of_v<Ret, tuple>>>
 		operator Ret() const
 		{
 			return call<Ret>();
@@ -183,12 +190,27 @@ namespace kath
 			return expr_.access_field(L, std::forward<Key>(key));
 		}
 
+        // lazy invoke
 		template <typename ... Args>
-		auto operator() (Args&& ... args) const noexcept
+		auto operator() (Args&& ... args) const
 			->  invoke_expression<index_expression_t, lua_pcall, Args...>
 		{
 			return { L, expr_, std::forward<Args>(args)... };
 		}
+
+        // immediate invoke
+        template <typename ... Rets, typename ... Args>
+        decltype(auto) operator()(type_list<Rets...>, Args&& ... args) const
+        {
+            return pcall<Rets...>(std::forward<Args>(args)...);
+        }
+
+        // immeidate invoke
+        template <typename ... Rets, typename ... Args>
+        decltype(auto) pcall(Args&& ... args) const
+        {
+            return expr_.pcall<Rets...>(L, std::forward<Args>(args)...);
+        }
 
 	private:
 		lua_State *			L;

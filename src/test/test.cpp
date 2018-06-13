@@ -210,12 +210,14 @@ int main(void)
 		kath::lua lua;
 		int a = lua["function1"]();
 
-		std::tuple<int, int> r = lua["function2"]();
+        int b;
+		kath::tie(a, b)  = lua["function2"]();
 
-		int c, b;
-		std::tie(a, b) = r;
-
-		//auto[r1, r2, r3] = lua["function3"]<int, double, float>(1, 2, 3);
+        {
+             auto [a, b] = lua["function3"].pcall<int, int>(1, 2, 3);
+             auto [c, d] = lua["talbe"]["function"](KATH_RESULT_T(int, int), 1, 2, 3);
+        }
+       
 	}
 	return 0;
 }
