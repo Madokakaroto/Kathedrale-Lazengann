@@ -68,8 +68,7 @@ namespace kath
     struct swallow_t
     {
         template <typename ... T>
-        swallow_t(T&& ... t)
-        {}
+        constexpr swallow_t(T&& ... t) noexcept {}
     };
 }
 

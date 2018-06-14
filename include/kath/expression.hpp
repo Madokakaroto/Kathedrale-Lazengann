@@ -170,10 +170,15 @@ namespace kath
 		{
 		}
 
+		void fetch() const
+		{
+			expr_.fetch(L);
+		}
+
 		template <typename Value>
 		operator Value() const
 		{
-			expr_.fetch(L);
+			fetch();
 			return kath::stack_get<Value>(L);
 		}
 
@@ -193,7 +198,7 @@ namespace kath
         // lazy invoke
 		template <typename ... Args>
 		auto operator() (Args&& ... args) const
-			->  invoke_expression<index_expression_t, lua_pcall, Args...>
+			-> invoke_expression<index_expression_t, lua_pcall, Args...>
 		{
 			return { L, expr_, std::forward<Args>(args)... };
 		}

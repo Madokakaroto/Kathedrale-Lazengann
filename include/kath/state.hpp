@@ -64,6 +64,50 @@ namespace kath
 		}
 	};
 
+	class reference_t
+	{
+	public:
+		// make sure the ref object is at the top
+		explicit reference_t(lua_State* L)
+			: L(L)
+			, ref_(::luaL_ref(L, LUA_REGISTRYINDEX))
+		{}
+
+		template <typename Proxy>
+		explicit reference_t(Proxy const& proxy)
+			: L(proxy.get_state())
+			, ref_(LUA_REFNIL)
+		{
+			stack_guard guard{ L };
+
+			proxy.fetch();
+			ref_ = ::luaL_ref(L, LUA_REGISTRYINDEX);
+		}
+
+		auto get_state() const noexcept
+		{
+			return L;
+		}
+
+	private:
+		lua_State*	L;
+		int			ref_;
+	};
+
+	class lua_value : base_expression<lua_value>
+	{
+	public:
+		template <typename Proxy>
+		explicit lua_value(Proxy const& proxy)
+			: ref_(proxy)
+		{}
+
+
+
+	private:
+		reference_t		ref_;
+	};
+
 	class lua
 	{
 	public:
