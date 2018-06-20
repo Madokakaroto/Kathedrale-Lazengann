@@ -22,13 +22,13 @@ namespace kath
 		using expression_type = Expr;
 		using const_expression = std::add_const_t<Expr>;
 
-		template <typename Key>
-		auto access_field(lua_State* L, Key&& key) const noexcept
-		{
-			using forward_type = exract_key_type_t<Key>;
-			using table_proxy_t = table_proxy<Expr, forward_type>;
-			return table_proxy_t{ L, extrac_expression(*this), std::forward<forward_type>(key) };
-		}
+        template <typename Key>
+        auto access_field(lua_State* L, Key&& key) const noexcept
+        {
+            using forward_key_type = exract_key_type_t<Key>;
+            using table_expression_t = table_expression<Expr, forward_key_type>;
+            return table_expression_t{ L, extrac_expression(*this), std::forward<forward_key_type>(key) };
+        }
 
 	protected:
 		base_expression() = default;
@@ -49,63 +49,6 @@ namespace kath
 		terminate_expression() = default;
 	};
 
-	template <typename Expr, typename Key>
-	class index_expression : public base_expression<index_expression<Expr, Key>>
-	{
-	public:
-		using expression_type = Expr;
-		using const_expression = std::add_const_t<Expr>;
-		using key_type = Key;
-
-		template <typename OtherExpr, typename Otherkey>
-		friend class index_expression;
-
-		index_expression(const_expression& expr, key_type key)
-			: expr_(expr)
-			, key_(std::move(key))
-		{}
-
-		~index_expression() = default;
-
-		void fetch(lua_State* L) const
-		{
-			expr_.fetch_field(L, key_);
-		}
-
-		template <typename K>
-		void fetch_field(lua_State* L, K const& key) const
-		{
-			fetch(L);
-			kath::fetch_field(L, key);
-		}
-
-		template <typename K, typename Value>
-		void set_field(lua_State* L, K const& key, Value&& value) const
-		{
-			fetch(L);
-			kath::set_field(L, key, std::forward<Value>(value));
-		}
-
-		template <typename Value>
-		void set_field(lua_State* L, Value&& value) const
-		{
-			expr_.set_field(L, key_, std::forward<Value>(value));
-		}
-
-        template <typename ... Rets, typename ... Args>
-        decltype(auto) pcall(lua_State* L, Args&& ... args) const
-        {
-            using result_type = std::tuple<Rets...>;
-
-            fetch(L);
-            return lua_pcall::do_call<result_type>(L, std::forward_as_tuple(std::forward<Args>(args)...));
-        }
-
-	private:
-		const_expression&	expr_;
-		key_type			key_;
-	};
-
     // lazy invoke
 	template <typename Expr, typename Invoker, typename ... Args>
 	class invoke_expression : public terminate_expression<invoke_expression<Expr, Invoker>>
@@ -115,6 +58,9 @@ namespace kath
 		using const_expression = std::add_const_t<Expr>;
 		using tuple_type = std::tuple<Args...>;
 	
+        template <typename OtherExpr, typename Key>
+        class table_expression;
+
 		invoke_expression(lua_State* L, const_expression& expr, Args ... args)
 			: L(L)
 			, expr_(expr)
@@ -154,71 +100,95 @@ namespace kath
 		tuple_type			tuple_;
 		mutable bool		dismiss_;
 	};
+    
+    template <typename Expr, typename Key>
+    class table_expression : public base_expression<table_expression<Expr, Key>>
+    {
+    public:
+        using expression_type = Expr;
+        using const_expression = std::add_const_t<Expr>;
+        using key_type = Key;
 
-	template <typename Expr, typename Key>
-	class table_proxy
-	{
-	public:
-		static_assert(negative_v<meta_or<std::is_pointer<Expr>, std::is_reference<Expr>>>);
-		static_assert(std::is_base_of_v<base_expression<Expr>, Expr>);
+        template <typename OtherExpr, typename OtherKey>
+        friend class table_expression;
 
-		using index_expression_t = index_expression<Expr, Key>;
+        template <typename OtherExpr, typename Invoker, typename ... Args>
+        friend class invoke_expression;
 
-		table_proxy(lua_State* L, Expr const& expr, Key key) noexcept
-			: L(L)
-			, expr_(expr, std::forward<Key>(key))
-		{
-		}
+    public:
+        table_expression(lua_State* L, const_expression& expr, key_type key)
+            : L_(L)
+            , expr_(expr)
+            , key_(key)
+        {}
 
-		void fetch() const
-		{
-			expr_.fetch(L);
-		}
+        template <typename Value>
+	    table_expression& operator= (Value&& v)
+	    {
+	    	expr_.set_field(L_, key_, std::forward<Value>(v));
+	    	return *this;
+	    }
 
-		template <typename Value>
-		operator Value() const
-		{
-			fetch();
-			return kath::stack_get<Value>(L);
-		}
+        template <typename Value>
+        operator Value() const
+        {
+            fetch(L_);
+            return kath::stack_get<Value>(L_);
+        }
 
-		template <typename Value>
-		table_proxy& operator= (Value&& v)
-		{
-			expr_.set_field(L, std::forward<Value>(v));
-			return *this;
-		}
-
-		template <typename Key>
-		auto operator[](Key&& key) const noexcept
-		{
-			return expr_.access_field(L, std::forward<Key>(key));
-		}
+        template <typename Key>
+        auto operator[](Key&& key) const noexcept
+        {
+            return expr_.access_field(L_, std::forward<Key>(key));
+        }
 
         // lazy invoke
-		template <typename ... Args>
-		auto operator() (Args&& ... args) const
-			-> invoke_expression<index_expression_t, lua_pcall, Args...>
-		{
-			return { L, expr_, std::forward<Args>(args)... };
-		}
+	template <typename ... Args>
+	auto operator() (Args&& ... args) const noexcept
+		-> invoke_expression<table_expression, lua_pcall, Args...>
+	{
+		return { L_, *this, std::forward<Args>(args)... };
+	}
 
-        // immediate invoke
-        template <typename ... Rets, typename ... Args>
-        decltype(auto) operator()(type_list<Rets...>, Args&& ... args) const
+       // immediate invoke
+       template <typename ... Rets, typename ... Args>
+       decltype(auto) operator()(type_list<Rets...>, Args&& ... args) const
+       {
+           return pcall<Rets...>(std::forward<Args>(args)...);
+       }
+
+       template <typename ... Rets, typename ... Args>
+       decltype(auto) pcall(Args&& ... args) const
+       {
+           using result_type = std::tuple<Rets...>;
+
+           fetch(L_);
+           return lua_pcall::do_call<result_type>(L_, std::forward_as_tuple(std::forward<Args>(args)...));
+       }
+
+    private:
+        void fetch(lua_State* L) const
         {
-            return pcall<Rets...>(std::forward<Args>(args)...);
+            expr_.fetch_field(L, key_);
         }
 
-        // immeidate invoke
-        template <typename ... Rets, typename ... Args>
-        decltype(auto) pcall(Args&& ... args) const
+        template <typename K>
+        void fetch_field(lua_State* L, K const& key) const
         {
-            return expr_.pcall<Rets...>(L, std::forward<Args>(args)...);
+            fetch(L);
+            kath::fetch_field(L, key);
         }
 
-	private:
-		lua_State *			L;
-		index_expression_t	expr_;
-	};
+        template <typename K, typename Value>
+        void set_field(lua_State* L, K const& key, Value&& value) const
+        {
+            fetch(L);
+            kath::set_field(L, key, std::forward<Value>(value));
+        }
+
+    private:
+        lua_State*          L_;
+        const_expression&	expr_;
+        key_type			key_;
+    };
 }

@@ -73,9 +73,6 @@ int main(void)
     //return 0;
     
     try {
-	/*kath::state state;
-	state["key"] = 1024;
-	int a = state["key"];*/
 
 		char* key = new char[4];
 		key[0] = 'k';

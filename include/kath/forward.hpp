@@ -34,6 +34,9 @@ namespace kath
 	template <typename Expr, typename Key>
 	class index_expression;
 
+    template <typename Expr, typename Key>
+    class table_expression;
+
 	template <typename Expr, typename Invoker, typename ... Args>
 	class invoke_expression;
 
