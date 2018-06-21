@@ -115,6 +115,8 @@ namespace kath
         template <typename OtherExpr, typename Invoker, typename ... Args>
         friend class invoke_expression;
 
+        friend class lua_value;
+
     public:
         table_expression(lua_State* L, const_expression& expr, key_type key)
             : L_(L)
@@ -129,7 +131,7 @@ namespace kath
 	    	return *this;
 	    }
 
-        template <typename Value>
+        template <typename Value, typename = disable_if_t<std::is_same_v<Value, lua_value>>>
         operator Value() const
         {
             fetch(L_);
@@ -143,33 +145,38 @@ namespace kath
         }
 
         // lazy invoke
-	template <typename ... Args>
-	auto operator() (Args&& ... args) const noexcept
-		-> invoke_expression<table_expression, lua_pcall, Args...>
-	{
-		return { L_, *this, std::forward<Args>(args)... };
-	}
+	    template <typename ... Args>
+	    auto operator() (Args&& ... args) const noexcept
+	    	-> invoke_expression<table_expression, lua_pcall, Args...>
+	    {
+	    	return { L_, *this, std::forward<Args>(args)... };
+	    }
 
-       // immediate invoke
-       template <typename ... Rets, typename ... Args>
-       decltype(auto) operator()(type_list<Rets...>, Args&& ... args) const
-       {
-           return pcall<Rets...>(std::forward<Args>(args)...);
-       }
+        // immediate invoke
+        template <typename ... Rets, typename ... Args>
+        decltype(auto) operator()(type_list<Rets...>, Args&& ... args) const
+        {
+            return pcall<Rets...>(std::forward<Args>(args)...);
+        }
 
-       template <typename ... Rets, typename ... Args>
-       decltype(auto) pcall(Args&& ... args) const
-       {
-           using result_type = std::tuple<Rets...>;
-
-           fetch(L_);
-           return lua_pcall::do_call<result_type>(L_, std::forward_as_tuple(std::forward<Args>(args)...));
-       }
+        template <typename ... Rets, typename ... Args>
+        decltype(auto) pcall(Args&& ... args) const
+        {
+            using result_type = std::tuple<Rets...>;
+        
+            fetch(L_);
+            return lua_pcall::do_call<result_type>(L_, std::forward_as_tuple(std::forward<Args>(args)...));
+        }
 
     private:
         void fetch(lua_State* L) const
         {
             expr_.fetch_field(L, key_);
+        }
+
+        lua_State* get_state() const noexcept
+        {
+            return L_;
         }
 
         template <typename K>

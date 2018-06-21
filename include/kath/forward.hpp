@@ -48,6 +48,8 @@ namespace kath
 
 	class state;
 
+    class lua_value;
+
 	namespace ext
 	{
 		template <typename T, typename = void>

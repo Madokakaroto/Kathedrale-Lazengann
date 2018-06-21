@@ -67,42 +67,63 @@ namespace kath
 	class reference_t
 	{
 	public:
-		// make sure the ref object is at the top
-		explicit reference_t(lua_State* L)
-			: L(L)
-			, ref_(::luaL_ref(L, LUA_REGISTRYINDEX))
-		{}
+        reference_t(lua_State* L, int ref)
+            : L_(L)
+            , ref_(ref)
+        {}
 
-		template <typename Proxy>
-		explicit reference_t(Proxy const& proxy)
-			: L(proxy.get_state())
-			, ref_(LUA_REFNIL)
+		template <typename TableExpr>
+		explicit reference_t(TableExpr const& expr)
+			: L_(expr.get_state())
+			, ref_(LUA_NOREF)
 		{
-			stack_guard guard{ L };
-
-			proxy.fetch();
-			ref_ = ::luaL_ref(L, LUA_REGISTRYINDEX);
+            assert(L_);
+            stack_guard gaurd{ L_ };
+            expr.fetch();
+            ref_ = ::luaL_ref(L, LUA_REGISTRYINDEX);
 		}
+
+        ~reference_t() noexcept
+        {
+            if(nullptr != L_ && ref_ > 0)
+            {
+                ::luaL_unref(L_, LUA_REGISTRYINDEX, ref_);
+            }
+
+            ref_ = LUA_NOREF;
+        }
 
 		auto get_state() const noexcept
 		{
-			return L;
+			return L_;
 		}
 
+        void fetch() const 
+        {
+            ::lua_rawgeti(L_, LUA_REGISTRYINDEX, ref_);
+        }
+
 	private:
-		lua_State*	L;
-		int			ref_;
+		lua_State*	    L_;
+		int			    ref_;
 	};
 
 	class lua_value : base_expression<lua_value>
 	{
 	public:
-		template <typename Proxy>
-		explicit lua_value(Proxy const& proxy)
+
+        template <typename TabExpr>
+		lua_value(TabExpr const& expr)
 			: ref_(proxy)
 		{}
 
-
+        template <typename Value, typename = disable_if_t<std::is_same_v<Value, lua_value>>>
+        operator Value() const
+        {
+            stack_guard gaurd{ ref_.get_state() };
+            ref_.fetch();
+            return kath::stack_get<Value>(L_);
+        }
 
 	private:
 		reference_t		ref_;
