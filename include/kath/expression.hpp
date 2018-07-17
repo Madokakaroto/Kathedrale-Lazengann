@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 namespace kath
 {
@@ -18,7 +18,7 @@ namespace kath
 	class base_expression
 	{
 	public:
-		static_assert(meta_and_v<negative<std::is_pointer<Expr>>, negative<std::is_reference<Expr>>>);
+		static_assert(meta_and_v<negation<std::is_pointer<Expr>>, negation<std::is_reference<Expr>>>);
 		using expression_type = Expr;
 		using const_expression = std::add_const_t<Expr>;
 
@@ -38,7 +38,7 @@ namespace kath
 	class terminate_expression
 	{
 	public:
-		static_assert(meta_and_v<negative<std::is_pointer<Expr>>, negative<std::is_reference<Expr>>>);
+		static_assert(meta_and_v<negation<std::is_pointer<Expr>>, negation<std::is_reference<Expr>>>);
 		using expression_type = Expr;
 		using const_expression = std::add_const_t<Expr>;
 

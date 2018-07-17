@@ -1,12 +1,11 @@
-#pragma once
+﻿#pragma once
 
 namespace kath
 {
     template <typename T>
     inline static void new_class(lua_State* L)
     {
-        using type = meta_class_t<T>;
-        static_assert(!std::is_same_v<type, dummy_meta_class>, "not supported class");
+		using type = reflexpr(T);
 
         // TODO ... higher-level table op
         stack_guard guard{ L };
@@ -21,7 +20,7 @@ namespace kath
         // TODO ... __newindex
 
         // __gc
-        if constexpr(is_reference_type_v<T>)
+        if constexpr(is_userdata_reference_type_v<T>)
         {
             stack_push(L, [](lua_State* L) -> int
             {

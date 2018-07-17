@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // stack op
 namespace kath 
@@ -26,7 +26,7 @@ namespace kath
 
 	    template <typename T>
 	    struct is_ref_value_ptr<T, std::enable_if_t<is_smart_pointer_v<T>>>
-	    	: is_reference_type<typename T::element_type>
+	    	: is_userdata_reference_type<typename T::element_type>
 	    {};
 
         template <typename T>
@@ -45,7 +45,7 @@ namespace kath
 		template <typename T>
 		using is_pointer_exclude_type = meta_and<
 			is_primitive_type<T>,
-			negative<is_c_string<T>>
+			negation<is_c_string<T>>
 		>;
 
 		template <typename T>
@@ -95,7 +95,7 @@ namespace kath
 	}
 
 	template <typename T>
-	inline static auto stack_push(lua_State* L, T&& t) -> std::enable_if_t<is_value_type_v<std::remove_reference_t<T>>>
+	inline static auto stack_push(lua_State* L, T&& t) -> std::enable_if_t<is_userdata_value_type_v<std::remove_reference_t<T>>>
 	{
 		detail::stack_push_userdata(L, std::forward<T>(t));
 		::luaL_setmetatable(L, get_class_name<T>());
@@ -110,7 +110,7 @@ namespace kath
 	}
 
 	template <typename T>
-	inline static auto stack_push(lua_State* L, T&& t) -> std::enable_if_t<is_reference_type_v<std::remove_reference_t<T>>>
+	inline static auto stack_push(lua_State* L, T&& t) -> std::enable_if_t<is_userdata_reference_type_v<std::remove_reference_t<T>>>
 	{
 		auto ref_ptr = t.ref_from_this();
 		stack_push(L, std::move(ref_ptr));
@@ -153,7 +153,7 @@ namespace kath
 		}
 
 		template <typename T>
-		using is_non_luac_callable = meta_and<is_callable<T>, negative<is_lua_cfunction<T>>>;
+		using is_non_luac_callable = meta_and<is_callable<T>, negation<is_lua_cfunction<T>>>;
 
 		template <typename T>
 		inline constexpr bool is_non_luac_callable_v = is_non_luac_callable<T>::value;
@@ -205,13 +205,13 @@ namespace kath
 
 	template <typename T>
 	inline static auto stack_get(lua_State* L, int index = -1) 
-		-> std::enable_if_t<meta_or_v<is_value_type<T>, detail::is_ref_value_ptr<T>>, T&>
+		-> std::enable_if_t<meta_or_v<is_userdata_value_type<T>, detail::is_ref_value_ptr<T>>, T&>
 	{
 		return *detail::stack_get_emplaced_userdata<T>(L, index);
 	}
 
 	template <typename T>
-	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<is_reference_type_v<T>, T&>
+	inline static auto stack_get(lua_State* L, int index = -1) -> std::enable_if_t<is_userdata_reference_type_v<T>, T&>
 	{
 		return *detail::stack_get_referenced_userdata<T>(L, index);
 	}
@@ -226,7 +226,7 @@ namespace kath
 	template <typename T>
 	inline static auto stack_get(lua_State* L, int index = -1) 
 		-> std::enable_if_t<meta_and_v<std::is_pointer<T>, 
-			meta_or<is_value_type<std::remove_pointer_t<T>>, detail::is_ref_value_ptr<std::remove_pointer_t<T>>>>, T>
+			meta_or<is_userdata_value_type<std::remove_pointer_t<T>>, detail::is_ref_value_ptr<std::remove_pointer_t<T>>>>, T>
 	{
 		return detail::stack_get_emplaced_userdata<std::remove_pointer_t<T>>(L, index);
 	}
@@ -234,7 +234,7 @@ namespace kath
 	// get pointer for reference type userdata
 	template <typename T>
 	inline static auto stack_get(lua_State* L, int index = - 1)
-		-> std::enable_if_t<meta_and_v<std::is_pointer<T>, is_reference_type<std::remove_pointer_t<T>>>, T>
+		-> std::enable_if_t<meta_and_v<std::is_pointer<T>, is_userdata_reference_type<std::remove_pointer_t<T>>>, T>
 	{
 		return detail::stack_get_referenced_userdata<std::remove_pointer_t<T>>(L, index);
 	}

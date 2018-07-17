@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "functional/bind_detail.hpp"
 
@@ -348,10 +348,10 @@ namespace kath
         template <typename T, typename RefCounter, typename Tuple, size_t ... Is>
         inline static void make_ref_object(lua_State* L, std::index_sequence<Is...>)
         {
-            auto ptr = make_ref<T, RefCounter>(std::forward<std::tuple_element_t<Is, Tuple>>(
-                stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 1))...);
+            //auto ptr = make_ref<T, RefCounter>(std::forward<std::tuple_element_t<Is, Tuple>>(
+            //    stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 1))...);
             
-            detail::stack_push_userdata(L, std::move(ptr));
+            //detail::stack_push_userdata(L, std::move(ptr));
         }
     }
 
@@ -360,13 +360,13 @@ namespace kath
     {
         return [](lua_State* L)
         {
-            if constexpr(is_value_type_v<T>)
+            if constexpr(is_userdata_value_type_v<T>)
             {
                 detail::emplace_new_object<T, std::tuple<Args...>>(L, std::make_index_sequence<sizeof...(Args)>{});
             }
             else
             {
-                static_assert(is_reference_type_v<T>, "Unsupported type!");
+                static_assert(is_userdata_reference_type_v<T>, "Unsupported type!");
                 using ref_count_ptr_t = decltype(std::declval<T>().ref_from_this());
                 detail::make_ref_object<T, typename ref_count_ptr_t::ref_counter, std::tuple<Args...>>(
                     L, std::make_index_sequence<sizeof...(Args)>{});
@@ -396,8 +396,8 @@ namespace kath
 		template <typename T1, typename T2, typename ... Rests>
 		struct traits_result_type<T1, T2, Rests...>
 		{
-			static_assert(meta_and_v<negative<std::is_void<T1>>,
-				negative<std::is_void<T2>>, negative<std::is_void<Rests>>...>);
+			static_assert(meta_and_v<negation<std::is_void<T1>>,
+				negation<std::is_void<T2>>, negation<std::is_void<Rests>>...>);
 			using type = std::tuple<T1, T2, Rests...>;
 		};
 

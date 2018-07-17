@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include <boost/preprocessor.hpp>
-
 namespace kath
 {
 	template <typename T>
@@ -30,6 +28,17 @@ namespace kath
 	{
 		using type = Ret(T::*)(Args...) const;
 	};
+
+	template <typename T, typename = void>
+	struct is_reflected : std::false_type {};
+
+	template <typename T>
+	struct is_reflected<T, std::void_t<
+		decltype(reflect_info<T>::name())
+	>> : std::true_type {};
+
+	template <typename T>
+	inline constexpr bool is_reflected_v = is_reflected<T>::value;
 }
 
 /* non-static member function */
@@ -136,11 +145,11 @@ template<> struct kath::reflect_info<c> {								\
 template <typename T, typename = void>									\
 struct BOOST_PP_CAT(has_reflect_, CAT) : std::false_type{};				\
 template <typename T>													\
-struct BOOST_PP_CAT(has_reflect, CAT)<T, std::void_t<					\
+struct BOOST_PP_CAT(has_reflect_, CAT)<T, std::void_t<					\
 	decltype(T::BOOST_PP_CAT(CAT, _names)()),							\
 	decltype(T::BOOST_PP_CAT(CAT, BOOST_PP_EMPTY())())					\
->> : std::true_type {};													\
-template <typename, typename = void>									\
+>> : std::true_type{};													\
+template <typename T, typename = void>									\
 struct BOOST_PP_CAT(has_visit_, CAT) : std::false_type{};				\
 template <typename T>													\
 struct BOOST_PP_CAT(has_visit_, CAT)<T, std::void_t<					\
@@ -149,30 +158,32 @@ struct BOOST_PP_CAT(has_visit_, CAT)<T, std::void_t<					\
 		std::declval<int>(),											\
 		std::declval<size_t>(),											\
 		std::declval<int>()												\
-))>> : std::true_type{};
+	))>> : std::true_type{};
 
 #define KATH_TMP_VISIT(CAT)												\
 template <typename T, typename V>										\
-inline static auto BOOST_PP_CAT(visit_, CAT)(reflect_info<T>, V const& visitor) noexcept	\
--> std::enable_if_t<std::conjunction_v<									\
+inline static auto BOOST_PP_CAT(visit_, CAT)(reflect_info<T>, V const& visitor) noexcept \
+-> std::enable_if_t<std::conjunction<									\
 	BOOST_PP_CAT(has_reflect_, CAT)<reflect_info<T>>,					\
-	BOOST_PP_CAT(has_visit_, CAT)<V>>> {								\
-	using reflect_info_t = reflect_info<T>;								\
-	constexpr size_t size = reflect_info_t::BOOST_PP_CAT(CAT, _count);	\
-	visit_loop(reflect_info_t::BOOST_PP_CAT(CAT, _names)(),				\
-		reflect_info_t::BOOST_PP_CAT(CAT, BOOST_PP_EMPTY())(),			\
+	BOOST_PP_CAT(has_visit_, CAT)<V>>::value> {							\
+	using reflect_into_t = reflect_info<T>;								\
+	constexpr size_t size = reflect_into_t::BOOST_PP_CAT(CAT, _count);	\
+	visit_loop(															\
+		reflect_into_t::BOOST_PP_CAT(CAT, _names)(),					\
+		reflect_into_t::BOOST_PP_CAT(CAT, BOOST_PP_EMPTY())(),			\
 		[&visitor](auto ... args) {										\
-			visitor.BOOST_PP_CAT(visit_, CAT)(std::forward<decltype(args)>(args)...); },	\
-		std::make_index_sequence<size>{}); }							\
+			visitor.BOOST_PP_CAT(visit_, CAT)(std::forward<decltype(args)>(args)...); }, \
+		std::make_index_sequence<size>{});								\
+}																		\
 template <typename T, typename V>										\
-inline static auto BOOST_PP_CAT(visit_, CAT)(reflect_info<T>, V const&) noexcept			\
--> disable_if_t<std::conjunction_v<										\
+inline static auto BOOST_PP_CAT(visit_, CAT)(reflect_info<T>, V const& visitor) noexcept \
+-> disable_if_t<std::conjunction<										\
 	BOOST_PP_CAT(has_reflect_, CAT)<reflect_info<T>>,					\
-	BOOST_PP_CAT(has_visit_, CAT)<V>>>{}
+	BOOST_PP_CAT(has_visit_, CAT)<V>>::value>{}
 
 /* some tricks to remove DRY code */
 #define KATH_VISIT_SEQ (mdata)(sdata)(mfunc)(sfunc)
-#define KATH_VISIT_PROC(r, data, elem) BOOST_PP_CAT(visit_, elem)(reflect_info, visitor)
+#define KATH_VISIT_PROC(r, data, elem) BOOST_PP_CAT(visit_, elem)(ri, visitor);
 #define KATH_TMP_HAS_PROC(r, data, elem) KATH_TMP_HAS(elem)
 #define KATH_TMP_VISIT_PROC(r, data, elem) KATH_TMP_VISIT(elem)
 
@@ -218,5 +229,35 @@ namespace kath
 	inline static void reflect_visit(V const& visitor) noexcept
 	{
 		reflect_detail::visit(reflect_info<std::remove_const_t<T>>{}, visitor);
+	}
+
+	template <typename T, typename V>
+	inline static void reflect_visit(reflect_info<T> ri, V const& visitor) noexcept
+	{
+		reflect_detail::visit(ri, visitor);
+	}
+}
+
+// reflect interface
+namespace kath
+{
+	template <typename T>
+	inline static constexpr auto reflect()
+	{
+		static_assert(is_reflected_v<T>);
+		return reflect_info<T>{};
+	}
+}
+
+// simulate the new reflexpr keyword
+#define reflexpr(x) kath::reflect_info<std::remove_const_t<decltype(x)>>
+
+// some useful interface
+namespace kath
+{
+	template <typename T>
+	inline static char const* get_class_name()
+	{
+		return reflexpr(T)::name().c_str();
 	}
 }

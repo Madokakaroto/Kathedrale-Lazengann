@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <lua.hpp>
 #include <type_traits>
@@ -13,6 +13,7 @@
 #include <tuple>
 #include <memory>
 #include <atomic>
+#include <boost/preprocessor.hpp>
 
 namespace kath
 {

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // mpl extentions
 namespace kath
@@ -42,8 +42,8 @@ namespace kath
 
     template <typename T>
     using is_sequential_container = meta_and<
-        negative<is_string_buffer<T>>,
-        negative<has_key_map_type<T>>,
+        negation<is_string_buffer<T>>,
+        negation<has_key_map_type<T>>,
         is_container<T>
     >;
 
