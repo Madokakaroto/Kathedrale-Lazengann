@@ -17,12 +17,6 @@
 
 namespace kath
 {
-	template <typename T, typename RefCounter>
-	class ref_count_ptr;
-
-	template <typename T, typename RefCounter>
-	class weak_ptr; 
-
 	template <typename ... Rets>
 	struct lua_callable;
 
