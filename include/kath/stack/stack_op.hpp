@@ -51,6 +51,13 @@ namespace kath { namespace detail
 		swallow_t{ stack_forward_push<Is>(L, std::forward<T>(t))... };
 		return sizeof...(Is);
 	}
+
+	inline static void stack_push_metatable(lua_State* L, int index)
+	{
+		::lua_getmetatable(L, index);
+		::lua_rawget(L, -1);
+
+	}
 } }
 
 // stack push
@@ -105,8 +112,8 @@ namespace kath
 	inline static auto stack_push(lua_State* L, T&& t) 
 		-> std::enable_if_t<is_callable_v<std::remove_reference_t<T>>>
 	{
-		//using lua_cfunctor_t = lua_cfunctor<T>;
-		//return lua_cfunctor_t::stack_push_callable(L, std::forward<T>(t));
+		using lua_cfunctor_t = lua_cfunctor<T>;
+		return lua_cfunctor_t::stack_push_callable(L, std::forward<T>(t));
 	}
 
 	// extension type - kath implement std::vector, std::map and std::shared_ptr by default
@@ -299,8 +306,11 @@ namespace kath
 	inline static auto stack_check(lua_State* L, int arg = 1) 
 		-> std::enable_if_t<is_string_buffer_v<T>, T>
 	{
+		//size_t len{ 0 };
+		//auto ptr = ::luaL_checklstring(L, arg, &len);
+		//return { ptr, len };
 		size_t len{ 0 };
-		auto ptr = ::luaL_checklstring(L, arg, &len);
+		char const* ptr = ::luaL_checklstring(L, arg, &len);
 		return { ptr, len };
 	}
 
@@ -335,6 +345,13 @@ namespace kath
 			return ext::manipulate_type<RawT>::stack_check_ptr(L, arg);
 		}
 	}
+
+	template <typename T>
+	inline static decltype(auto) stack_check(lua_State* L,
+		std::enable_if_t<std::is_reference_v<T>, int> index = -1)
+	{
+		return stack_check<std::remove_reference_t<T>>(L, index);
+	}
 }
 
 // the rest of stack op
@@ -354,6 +371,9 @@ namespace kath
 	{
 		::lua_pushvalue(L, index);
 	}
+
+	template <bool Safe = false>
+	inline static char const* stack_type_name(lua_State* L, int index = -1);
 
 	template <typename T, typename Type = std::remove_reference_t<T>>
 	inline static auto stack_push_result(lua_State* L, T&& t) -> std::enable_if_t<is_valid_tuple_v<Type>, int>

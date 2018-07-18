@@ -7,7 +7,7 @@ namespace kath
 	template <typename T>
 	struct negation : std::bool_constant<!T::value> {};
 	template <typename T>
-	inline constexpr bool negative_v = negation<T>::value;
+	inline constexpr bool negation_v = negation<T>::value;
 
 	// logical conjunction
 	template <typename ... MetaFunc>
@@ -51,7 +51,7 @@ namespace kath
 namespace kath
 {
 	template <bool Test, typename T = void>
-	using disable_if = std::enable_if<negative_v<std::bool_constant<Test>>, T>;
+	using disable_if = std::enable_if<negation_v<std::bool_constant<Test>>, T>;
 
 	template <bool Test, typename T = void>
 	using disable_if_t = typename disable_if<Test, T>::type;
@@ -81,7 +81,12 @@ template <typename T>										\
 using BOOST_PP_CAT(TYPE, _t) = typename T::value_type;		\
 template <typename T>										\
 using BOOST_PP_CAT(safe_, BOOST_PP_CAT(TYPE, _t)) =			\
-	typename BOOST_PP_CAT(traits_type_, TYPE)<T>::type;
+	typename BOOST_PP_CAT(traits_type_, TYPE)<T>::type;		\
+template <typename T, typename = void>						\
+struct BOOST_PP_CAT(has_, TYPE) : std::false_type{};		\
+template <typename T>										\
+struct BOOST_PP_CAT(has_, TYPE)<T,							\
+	std::void_t<typename T::TYPE>> : std::true_type{};
 
 // type meta-function
 namespace kath
@@ -219,8 +224,7 @@ namespace kath
 
 	/* Manipulated type will be mapped into lua table */
 	template <typename T>
-	struct is_manipulated_type : std::bool_constant<ext::manipulate_type<T>::value>
-	{};
+	struct is_manipulated_type : std::bool_constant<ext::manipulate_type<T>::value> {};
 	template <typename T>
 	inline constexpr bool is_manipulated_type_v = is_manipulated_type<T>::value;
 
@@ -228,11 +232,10 @@ namespace kath
 	template <typename T, typename = void>
 	struct is_string_buffer : std::false_type {};
 	template <typename T>
-	struct is_string_buffer < T, std::void_t<
+	struct is_string_buffer<T, std::void_t<
 		decltype(std::declval<T>().data()),
 		decltype(std::declval<T>().size()),
-		decltype(T{ std::declval<char const*>(), std::declval<size_t>() }),
-		std::enable_if_t<std::is_same_v<safe_value_type_t<T>, char>>
+		decltype(T{ std::declval<char const*>(), std::declval<size_t>() })
 		>> : negation<is_manipulated_type<T>> {};
 	template <typename T>
 	inline constexpr bool is_string_buffer_v = is_string_buffer<T>::value;

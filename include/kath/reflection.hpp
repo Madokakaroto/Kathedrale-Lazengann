@@ -251,13 +251,3 @@ namespace kath
 
 // simulate the new reflexpr keyword
 #define reflexpr(x) kath::reflect_info<std::remove_const_t<decltype(x)>>
-
-// some useful interface
-namespace kath
-{
-	template <typename T>
-	inline static char const* get_class_name()
-	{
-		return reflexpr(T)::name().c_str();
-	}
-}

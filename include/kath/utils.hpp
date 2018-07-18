@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 namespace kath
 {
@@ -60,6 +60,52 @@ namespace kath
 #define KATH_MAKE_TYPE_LIST(...)  kath::type_list<__VA_ARGS__>{}
 #endif
 
-#ifndef KATH_RESULT_T
-#define KATH_RESULT_T KATH_MAKE_TYPE_LIST
+#ifndef KATH_RESULT
+#define KATH_RESULT KATH_MAKE_TYPE_LIST
 #endif
+
+#ifndef KATH_ARGS
+#define KATH_ARGS KATH_MAKE_TYPE_LIST
+#endif
+
+// some useful interface
+namespace kath
+{
+	template <typename T>
+	inline static char const* get_class_name() noexcept
+	{
+		return reflexpr(T)::name().c_str();
+	}
+
+	// TODO ... flatten the gap between lua and C++
+	template <typename T, bool Safe = false>
+	inline static auto get_type_name() noexcept
+	{
+		using type = std::remove_const_t<std::remove_reference_t<T>>;
+
+		if constexpr(is_bool_v<type>)
+		{
+			return 'b';
+		}
+		else if constexpr(meta_or_v<is_floating_point<type>, is_integral<type>>)
+		{
+			return 'n';
+		}
+		else if constexpr(is_string_v<type>)
+		{
+			return 's';
+		}
+		else
+		{
+			if constexpr(Safe)
+			{
+				return 'x';
+			}
+			else
+			{
+				using raw_type = std::remove_pointer_t<type>;
+				return get_class_name<raw_type>();
+			}
+		}
+	}
+}

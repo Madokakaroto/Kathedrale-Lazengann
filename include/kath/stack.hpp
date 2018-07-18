@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "stack/stack_op.hpp"
 
@@ -162,32 +162,31 @@ namespace kath
 	}	
 }
 
-// higher level
+// implement
 namespace kath
 {
-	struct gloabl_table_op : protected stack_guard
+	template <bool Safe>
+	char const* stack_type_name(lua_State* L, int index)
 	{
-		gloabl_table_op(lua_State* L)
-			: stack_guard(L)
-		{}
-
-		template <typename Key>
-		void fetch(Key const& key)
+		auto type = static_cast<basic_type>(::lua_type(L, index));
+		if constexpr(Safe)
 		{
-			assert(this->L_);
-			fetch_global(this->L_, key);
+			switch (type)
+			{
+			case basic_type::userdata:
+			{
+				stack_guard guard{ L };
+				::lua_getmetatable(L, arg);
+				fetch_field(L, "__name");
+				return stack_check<char const*>(L, -1);
+			}
+			default:
+				return basic_type_name(type);
+			}
 		}
-
-		template <typename Key, typename Value>
-		auto set(Key const& key, Value&& value) -> disable_if_t<is_callable_v<Value>>
-		{
-			assert(this->L_);
-			set_global(this->L_, key);
-		}
-
-	};
-
-	//struct 
+		else
+			return basic_type_name(type);
+	}
 }
 
 #include "stack/stack_op_ext.hpp"
