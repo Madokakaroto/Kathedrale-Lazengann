@@ -23,9 +23,11 @@ namespace kath
 
 	// check type T is an instance of template Tmpl
 	template <typename T, template <typename ...> class Tmpl>
-	struct is_instance_of : std::false_type {};
+	struct is_instance_of_impl : std::false_type {};
 	template <template <typename ...> class Tmpl, typename ... Args>
-	struct is_instance_of<Tmpl<Args...>, Tmpl> : std::true_type {};
+	struct is_instance_of_impl<Tmpl<Args...>, Tmpl> : std::true_type {};
+	template <typename T, template <typename ...> class Tmpl>
+	using is_instance_of = is_instance_of_impl<std::remove_cv_t<T>, Tmpl>;
 	template <typename T, template <typename ...> class Tmpl>
 	inline constexpr bool is_instance_of_v = is_instance_of<T, Tmpl>::value;
 
@@ -236,7 +238,7 @@ namespace kath
 		decltype(std::declval<T>().data()),
 		decltype(std::declval<T>().size()),
 		decltype(T{ std::declval<char const*>(), std::declval<size_t>() })
-		>> : negation<is_manipulated_type<T>> {};
+		>> : negation<meta_or<is_manipulated_type<T>, std::is_reference<T>>> {};
 	template <typename T>
 	inline constexpr bool is_string_buffer_v = is_string_buffer<T>::value;
 
@@ -271,7 +273,6 @@ namespace kath
 		>>> : std::true_type {};
 	template <typename F>
 	inline constexpr bool is_lua_cfunctor_v = is_lua_cfunctor<F>::value;
-
 
 	// primitive type
 	// 1. boolean

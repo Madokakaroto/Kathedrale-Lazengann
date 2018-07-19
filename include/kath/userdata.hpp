@@ -24,11 +24,10 @@ namespace kath
         {
             stack_push(L, [](lua_State* L) -> int
             {
-                using ref_counter_type = decltype(std::declval<T>().ref_from_this());
-                // TODO .. check ?
-                auto ptr = detail::stack_get_emplaced_userdata<ref_counter_type>(L, 1);
+                using shared_ptr_t = decltype(std::declval<T>().shared_from_this());
+                auto ptr = stack_get<shared_ptr_t*>(L, 1);
                 assert(ptr);
-                ptr->~ref_counter_type();
+                ptr->~shared_ptr_t();
                 return 0;
             });
             set_field(L, "__gc");

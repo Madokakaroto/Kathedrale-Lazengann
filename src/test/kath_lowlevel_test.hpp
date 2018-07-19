@@ -25,6 +25,7 @@ BOOST_AUTO_TEST_CASE(functional)
 	kath::stack_push(L, [a = 1](lua_State* L){ return a; });
 
 	auto overload = kath::overload([](std::string const& a, int b) { return a.size() + b; }, [](int a) { return a; });
-	//kath::stack_push(L, std::move(overload));
+	kath::stack_push(L, std::move(overload));
+
 	KATH_LUA_LOWLEVEL_END
 }

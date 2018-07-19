@@ -309,9 +309,9 @@ namespace kath
 		//size_t len{ 0 };
 		//auto ptr = ::luaL_checklstring(L, arg, &len);
 		//return { ptr, len };
-		size_t len{ 0 };
-		char const* ptr = ::luaL_checklstring(L, arg, &len);
-		return { ptr, len };
+		//size_t len{ 0 };
+		//char const* ptr = ::luaL_checklstring(L, arg, &len);
+		return { nullptr, 0 };
 	}
 
 	template <typename T>
@@ -346,11 +346,11 @@ namespace kath
 		}
 	}
 
-	template <typename T>
-	inline static decltype(auto) stack_check(lua_State* L,
+	template <typename T, typename RawT = std::remove_reference_t<T>>
+	inline static decltype(auto) stack_check(lua_State* L, 
 		std::enable_if_t<std::is_reference_v<T>, int> index = -1)
 	{
-		return stack_check<std::remove_reference_t<T>>(L, index);
+		return kath::stack_check<RawT>(L, index);
 	}
 }
 
