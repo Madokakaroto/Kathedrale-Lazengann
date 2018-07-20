@@ -23,4 +23,4 @@ set(test_sources
 )
 
 add_executable(kath_test ${test_sources})
-target_link_libraries(kath_test ${test_libs} -lmingw32)
+target_link_libraries(kath_test ${test_libs})
