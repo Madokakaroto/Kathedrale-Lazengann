@@ -252,6 +252,16 @@ namespace kath
 	template <typename T>
 	inline constexpr bool is_string_v = is_string<T>::value;
 
+	// has c_str member function
+	template <typename T, typename = void>
+	struct has_c_str : std::false_type {};
+	template <typename T>
+	struct has_c_str<T, std::void_t<
+		decltype(&T::c_str)
+	>> : std::true_type {};
+	template <typename T>
+	inline constexpr bool has_c_str_v = has_c_str<T>::value;
+
 	// is lua_cfunction
 	template <typename F>
 	using is_lua_cfunction = meta_and<

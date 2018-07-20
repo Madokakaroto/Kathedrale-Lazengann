@@ -1,8 +1,8 @@
-#pragma once
+﻿#pragma once
 
 namespace kath
 {
-	enum class basic_type : int32_t
+	enum class basic_type : int
 	{
 		nil = LUA_TNIL,
 		boolean = LUA_TBOOLEAN,
