@@ -122,7 +122,7 @@ namespace kath
         -> std::enable_if_t<is_manipulated_type_v<RawT>>
     {
         using manipulate_type_t = ext::manipulate_type<RawT>;
-        manipulate_type_t::stack_push(std::forward<T>(t));
+        manipulate_type_t::stack_push(L, std::forward<T>(t));
     }
 
     template <typename T, typename RawT = std::remove_reference_t<T>>
@@ -301,12 +301,9 @@ namespace kath
     inline static auto stack_check(lua_State* L, int arg = 1) 
         -> std::enable_if_t<is_string_buffer_v<T>, T>
     {
-        //size_t len{ 0 };
-        //auto ptr = ::luaL_checklstring(L, arg, &len);
-        //return { ptr, len };
-        //size_t len{ 0 };
-        //char const* ptr = ::luaL_checklstring(L, arg, &len);
-        return { nullptr, 0 };
+        size_t len{ 0 };
+        auto ptr = ::luaL_checklstring(L, arg, &len);
+        return { ptr, len };
     }
 
     template <typename T>

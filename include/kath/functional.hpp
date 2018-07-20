@@ -397,7 +397,7 @@ namespace kath
         template <typename Ret, typename ArgsPack>
         static auto do_call_multi_return(lua_State* L, ArgsPack&& args_pack)
         {
-            auto begin = ::lua_gettop(L) + 1;
+            auto begin = ::lua_gettop(L);
             do_call_impl(L, std::forward<ArgsPack>(args_pack), is_valid_tuple<Ret>::size);
             return detail::stack_multi_result<Ret>(L, begin, std::make_index_sequence<is_valid_tuple<Ret>::size>{});
         }
@@ -405,7 +405,7 @@ namespace kath
         template <typename Ret, typename ArgsPack>
         static auto do_call_single_return(lua_State* L, ArgsPack&& args_pack)
         {
-            auto begin = ::lua_gettop(L) + 1;
+            auto begin = ::lua_gettop(L);
             do_call_impl(L, std::forward<ArgsPack>(args_pack), 1);
             return stack_check<Ret>(L, begin);
         }

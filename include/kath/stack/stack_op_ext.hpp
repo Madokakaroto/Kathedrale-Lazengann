@@ -92,6 +92,7 @@ namespace kath
 
 namespace kath { namespace ext
 {
+    // extension for sequential container
     template <typename T>
     struct manipulate_type<T, std::enable_if_t<is_sequential_container_v<T>>>
     {
@@ -109,7 +110,7 @@ namespace kath { namespace ext
             ::lua_createtable(L, size, 0);
             for(auto loop = 0; loop < size; ++loop)
             {
-                set_table(L, loop, std::forward<forward_value_type>(c[loop]));
+                set_table(L, loop + 1, std::forward<forward_value_type>(c[loop]));
             }
         }
 
@@ -151,6 +152,7 @@ namespace kath { namespace ext
         }
     };
 
+    // extension for associative container
     template <typename T>
     struct manipulate_type<T, std::enable_if_t<is_associative_container_v<T>>>
     {
@@ -208,4 +210,6 @@ namespace kath { namespace ext
             return result;
         }
     };
+
+    // extension for shared_ptr
 } }

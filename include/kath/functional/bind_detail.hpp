@@ -112,6 +112,12 @@ namespace kath
             return std::bind(callable, std::forward<Arg>(arg), std::forward<Args>(args)...);
         }
 
+        template <typename Callable>
+        inline static decltype(auto) bind_callable(Callable&& callable) noexcept
+        {
+            return std::forward<Callable>(callable);
+        }
+
         template <typename F, typename ... Args>
         inline static auto bind_impl(F&& f, Args&& ... args)
         {
