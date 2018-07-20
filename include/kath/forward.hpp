@@ -17,37 +17,37 @@
 
 namespace kath
 {
-	template <typename ... Rets>
-	struct lua_callable;
+    template <typename ... Rets>
+    struct lua_callable;
 
-	template <typename Func>
-	struct lua_cfunctor;
+    template <typename Func>
+    struct lua_cfunctor;
 
-	template <typename Expr>
-	class base_expression;
+    template <typename Expr>
+    class base_expression;
 
-	template <typename Expr, typename Key>
-	class index_expression;
+    template <typename Expr, typename Key>
+    class index_expression;
 
     template <typename Expr, typename Key>
     class table_expression;
 
-	template <typename Expr, typename Invoker, typename ... Args>
-	class invoke_expression;
+    template <typename Expr, typename Invoker, typename ... Args>
+    class invoke_expression;
 
-	template <typename Expr, typename Key>
-	class table_proxy;
+    template <typename Expr, typename Key>
+    class table_proxy;
 
     template <typename ... Args>
     class tuple;
 
-	class state;
+    class state;
 
     class lua_value;
 
-	namespace ext
-	{
-		template <typename T, typename = void>
-		struct manipulate_type;
-	}
+    namespace ext
+    {
+        template <typename T, typename = void>
+        struct manipulate_type;
+    }
 }

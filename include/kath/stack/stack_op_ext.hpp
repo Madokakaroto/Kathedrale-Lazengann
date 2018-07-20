@@ -3,91 +3,91 @@
 // mpl extentions
 namespace kath
 {
-	template <typename T, typename = void>
-	struct has_forward_iterator : std::false_type {};
-	template <typename T>
-	struct has_forward_iterator<T, std::void_t<
-		typename T::iterator,
-		decltype(std::declval<typename T::iterator>()++)
-		>> : std::true_type {};
-	template <typename T>
-	inline constexpr bool has_forward_iterator_v = has_forward_iterator<T>::value;
+    template <typename T, typename = void>
+    struct has_forward_iterator : std::false_type {};
+    template <typename T>
+    struct has_forward_iterator<T, std::void_t<
+        typename T::iterator,
+    decltype(std::declval<typename T::iterator>()++)
+    >> : std::true_type {};
+    template <typename T>
+    inline constexpr bool has_forward_iterator_v = has_forward_iterator<T>::value;
 
-	template <typename T, typename = void>
-	struct has_key_mapped_type : std::false_type {};
-	template <typename T>
-	struct has_key_mapped_type<T, std::void_t<
-		typename T::key_type,
-		typename T::mapped_type
-		>> : std::true_type {};
-	template <typename T>
-	inline constexpr bool has_key_mapped_type_v = has_key_mapped_type<T>::value;
+    template <typename T, typename = void>
+    struct has_key_mapped_type : std::false_type {};
+    template <typename T>
+    struct has_key_mapped_type<T, std::void_t<
+        typename T::key_type,
+        typename T::mapped_type
+        >> : std::true_type {};
+    template <typename T>
+    inline constexpr bool has_key_mapped_type_v = has_key_mapped_type<T>::value;
 
-	// container
-	template <typename T, typename = void>
-	struct is_container : std::false_type {};
-	template <typename T>
-	struct is_container<T, std::void_t<
-		decltype(std::declval<T>().size()),
-		decltype(std::declval<T>().begin()),
-		decltype(std::declval<T>().end())
-		>> : meta_and<
-			has_value_type<T>,
-			has_forward_iterator<T>,
-			negation<is_std_string<T>>,
-			negation<is_string_view<T>>>{};
+    // container
+    template <typename T, typename = void>
+    struct is_container : std::false_type {};
+    template <typename T>
+    struct is_container<T, std::void_t<
+        decltype(std::declval<T>().size()),
+        decltype(std::declval<T>().begin()),
+        decltype(std::declval<T>().end())
+        >> : meta_and<
+            has_value_type<T>,
+            has_forward_iterator<T>,
+            negation<is_std_string<T>>,
+            negation<is_string_view<T>>>{};
 
-	// sequential container
-	template <typename T>
-	using is_sequential_container = meta_and<
-		negation<has_key_mapped_type<T>>,
-		is_container<T>
-	>;
-	template <typename T>
-	inline constexpr bool is_sequential_container_v = is_sequential_container<T>::value;
+    // sequential container
+    template <typename T>
+    using is_sequential_container = meta_and<
+        negation<has_key_mapped_type<T>>,
+        is_container<T>
+    >;
+    template <typename T>
+    inline constexpr bool is_sequential_container_v = is_sequential_container<T>::value;
 
-	// associative container
-	template <typename T>
-	using is_associative_container = meta_and<
-		has_key_mapped_type<T>, 
-		is_container<T>
-	>;
-	template <typename T>
-	inline constexpr bool is_associative_container_v = is_associative_container<T>::value;
+    // associative container
+    template <typename T>
+    using is_associative_container = meta_and<
+        has_key_mapped_type<T>, 
+        is_container<T>
+    >;
+    template <typename T>
+    inline constexpr bool is_associative_container_v = is_associative_container<T>::value;
 
-	namespace detail
-	{
-		template <typename C, typename E>
-		struct forward_type
-		{
-		private:
-			using temp_type = std::remove_reference_t<C>;
+    namespace detail
+    {
+        template <typename C, typename E>
+        struct forward_type
+        {
+        private:
+            using temp_type = std::remove_reference_t<C>;
 
-			using temp_type1 = std::conditional_t<
-				std::is_volatile_v<temp_type>,
-				std::add_volatile_t<E>, E
-			>;
+            using temp_type1 = std::conditional_t<
+                std::is_volatile_v<temp_type>,
+                std::add_volatile_t<E>, E
+            >;
 
-			using temp_type2 = std::conditional_t<
-				std::is_const_v<temp_type>,
-				std::add_const_t<temp_type1>, temp_type1
-			>;
+            using temp_type2 = std::conditional_t<
+                std::is_const_v<temp_type>,
+                std::add_const_t<temp_type1>, temp_type1
+            >;
 
-		public:
-			using type = std::conditional_t<
-				std::is_lvalue_reference_v<C>,
-				std::add_lvalue_reference_t<temp_type2>,
-				std::conditional_t<
-				std::is_rvalue_reference_v<C>,
-				std::add_rvalue_reference_t<temp_type2>,
-				temp_type2
-				>
-			>;
-		};
+        public:
+            using type = std::conditional_t<
+                std::is_lvalue_reference_v<C>,
+                std::add_lvalue_reference_t<temp_type2>,
+                std::conditional_t<
+                    std::is_rvalue_reference_v<C>,
+                    std::add_rvalue_reference_t<temp_type2>,
+                    temp_type2
+                >
+            >;
+        };
 
-		template <typename T, typename E>
-		using forward_type_t = typename forward_type<T, E>::type;
-	}
+        template <typename T, typename E>
+        using forward_type_t = typename forward_type<T, E>::type;
+    }
 }
 
 namespace kath { namespace ext
@@ -123,7 +123,7 @@ namespace kath { namespace ext
             {
                 // TODO ... check index continuity
                 //kath::stack_get<int>(L, -2);
-                decltype(auto) value = kath::stack_get<value_type>(L);
+             decltype(auto) value = kath::stack_get<value_type>(L);
 
                 result.push_back(value);
                 kath::stack_pop(L);

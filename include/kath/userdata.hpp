@@ -5,7 +5,7 @@ namespace kath
     template <typename T>
     inline static void new_class(lua_State* L)
     {
-		using type = reflexpr(T);
+        using type = reflexpr(T);
 
         // TODO ... higher-level table op
         stack_guard guard{ L };
