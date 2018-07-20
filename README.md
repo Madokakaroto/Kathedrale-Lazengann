@@ -5,6 +5,7 @@ Kathedrale-Lazengann, kath for short, is a simple library for interoperate betwe
 
 ## DEPENDENCIES
 C++17 language-standard
-boost 1.66 preprocessor test
+
+boost preprocessor test
 
 lua 5.3.4
