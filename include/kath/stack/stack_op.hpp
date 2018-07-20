@@ -39,11 +39,7 @@ namespace kath { namespace detail
 
     template <size_t Index, typename Tuple, typename
         Type = decltype(std::get<Index>(std::declval<Tuple>()))>
-    inline static bool stack_forward_push(lua_State* L, Tuple&& t)
-    {
-        stack_push(L, std::forward<Type>(std::get<Index>(t)));
-        return true;
-    }
+    inline static bool stack_forward_push(lua_State* L, Tuple&& t);
 
     template <typename T, size_t ... Is>
     inline static int stack_push_result_impl(lua_State* L, T&& t, std::index_sequence<Is...>)
@@ -56,7 +52,6 @@ namespace kath { namespace detail
     {
         ::lua_getmetatable(L, index);
         ::lua_rawget(L, -1);
-
     }
 } }
 
@@ -386,3 +381,13 @@ namespace kath
         return detail::stack_push_result_impl(L, std::forward<T>(t), std::make_index_sequence<std::tuple_size_v<Type>>{});
     }
 }
+
+namespace kath { namespace detail
+{
+    template <size_t Index, typename Tuple, typename Type>
+    bool stack_forward_push(lua_State* L, Tuple&& t)
+    {
+        stack_push(L, std::forward<Type>(std::get<Index>(t)));
+        return true;
+    }
+} }

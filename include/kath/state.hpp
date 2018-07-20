@@ -80,7 +80,7 @@ namespace kath
             assert(L_);
             stack_guard gaurd{ L_ };
             expr.fetch();
-            ref_ = ::luaL_ref(L, LUA_REGISTRYINDEX);
+            ref_ = ::luaL_ref(L_, LUA_REGISTRYINDEX);
         }
 
         ~reference_t() noexcept
@@ -114,7 +114,7 @@ namespace kath
 
         template <typename TabExpr>
         lua_value(TabExpr const& expr)
-            : ref_(proxy)
+            : ref_(expr)
         {}
 
         template <typename Value, typename = disable_if_t<std::is_same_v<Value, lua_value>>>
@@ -122,7 +122,7 @@ namespace kath
         {
             stack_guard gaurd{ ref_.get_state() };
             ref_.fetch();
-            return kath::stack_get<Value>(L_);
+            return kath::stack_get<Value>(nullptr);
         }
 
     private:

@@ -141,7 +141,6 @@ BOOST_AUTO_TEST_CASE(lowlevel_pcall)
 
 BOOST_AUTO_TEST_CASE(lowlevel_std_container)
 {
-    using namespace std::string_view_literals;
     KATH_LUA_LOWLEVEL_BEGIN;
 
     std::vector<int> v = { 1, 2, 3, 4, 5 };
@@ -154,9 +153,9 @@ BOOST_AUTO_TEST_CASE(lowlevel_std_container)
     )"));
 
     std::map<std::string_view, int> table = {
-        { "key1"sv, 1 },
-        { "key2"sv, 2 },
-        { "keyn"sv, 1024 }
+        { "key1", 1 },
+        { "key2", 2 },
+        { "key3", 1024 }
     };
     kath::set_global(L, "table", table);
     BOOST_CHECK(::lua_gettop(L) == 0);

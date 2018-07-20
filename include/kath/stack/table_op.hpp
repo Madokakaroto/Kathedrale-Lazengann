@@ -136,7 +136,7 @@ namespace kath
             case basic_type::userdata:
             {
                 stack_guard guard{ L };
-                ::lua_getmetatable(L, arg);
+                ::lua_getmetatable(L, index);
                 fetch_field(L, "__name");
                 return stack_check<char const*>(L, -1);
             }

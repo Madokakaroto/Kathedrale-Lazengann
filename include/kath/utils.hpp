@@ -74,7 +74,8 @@ namespace kath
     template <typename T>
     inline static char const* get_class_name() noexcept
     {
-        return reflexpr(T)::name().c_str();
+        using type = reflexpr(T);
+        return type::name().c_str();
     }
 
     // TODO ... flatten the gap between lua and C++

@@ -138,10 +138,10 @@ namespace kath
             return kath::stack_get<Value>(L_);
         }
 
-        template <typename Key>
-        auto operator[](Key&& key) const noexcept
+        template <typename K>
+        auto operator[](K&& key) const noexcept
         {
-            return expr_.access_field(L_, std::forward<Key>(key));
+            return expr_.access_field(L_, std::forward<K>(key));
         }
 
         // lazy invoke

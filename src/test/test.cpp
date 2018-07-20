@@ -1,5 +1,6 @@
 ﻿#include <kath.hpp>
 
+#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE "kath.test"
 #include <boost/test/unit_test.hpp>
 

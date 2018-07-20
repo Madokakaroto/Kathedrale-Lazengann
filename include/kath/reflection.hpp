@@ -250,4 +250,4 @@ namespace kath
 }
 
 // simulate the new reflexpr keyword
-#define reflexpr(x) kath::reflect_info<std::remove_const_t<decltype(x)>>
+#define reflexpr(x) kath::reflect_info<std::remove_const_t<x>>
