@@ -20,7 +20,7 @@ namespace kath
             {
                 ::lua_close(L);
                 L = nullptr;
-            }	
+            }
         }
 
         auto get_state() const noexcept

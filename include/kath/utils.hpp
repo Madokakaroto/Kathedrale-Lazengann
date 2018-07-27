@@ -20,8 +20,8 @@ namespace kath
         stack_guard& operator=(stack_guard const&) = delete;
         stack_guard& operator=(stack_guard&&) = delete;
     
-        lua_State*	L_;
-        int			top_;
+        lua_State*  L_;
+        int         top_;
     };
 
     template <typename ... Args>

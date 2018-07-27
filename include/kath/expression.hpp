@@ -95,10 +95,10 @@ namespace kath
         }
     
     private:
-        lua_State*			L;
-        const_expression&	expr_;
-        tuple_type			tuple_;
-        mutable bool		dismiss_;
+        lua_State*          L;
+        const_expression&   expr_;
+        tuple_type          tuple_;
+        mutable bool        dismiss_;
     };
     
     template <typename Expr, typename Key>
@@ -195,7 +195,7 @@ namespace kath
 
     private:
         lua_State*          L_;
-        const_expression&	expr_;
-        key_type			key_;
+        const_expression&   expr_;
+        key_type            key_;
     };
 }
