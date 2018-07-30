@@ -52,7 +52,7 @@ namespace kath
     template <typename T, typename C>
     inline static auto bind_get(T C::* pmd)
     {
-        return [pmd](C* ptr) -> T&
+        return [pmd](C* ptr) -> T
         {
             return ptr->*pmd;
         };

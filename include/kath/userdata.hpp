@@ -19,6 +19,10 @@ namespace kath
         }
 
         // property
+        // Get Set :
+        // 1. all pointer to member
+        // 2. result of bind_get and bind_set respectively
+
         template <typename Get, typename Set>
         struct property_helper
         {
@@ -70,19 +74,31 @@ namespace kath
             }
             else if constexpr(std::is_member_object_pointer_v<RawT>)
             {
-                this->property(name, 
+                this->property_impl(name,
                     std::move(bind_get(t)), 
                     std::move(bind_set(t)));
+            }
+            else if constexpr(std::is_pointer_v<RawT>)
+            {
+                // TODO ... for static data memeber
+
+            }
+            else 
+            {
+                static_assert(is_callable_v<RawT>, "Unsupported member type!");
+                set_table(L, name, std::forward<T>(t));
             }
             return *this;
         }
         
         template <typename Get, typename Set>
-        userdata_helper& property(char const* name, Get&& g, Set&& s)
+        auto property(char const* name, Get g, Set s) ->
+            std::enable_if_t<meta_and_v<
+                    std::is_member_function_pointer<Get>, 
+                    std::is_member_function_pointer<Set>>, 
+                userdata_helper&>
         {
-            detail::property_helper<Get, Set>::apply(L, name,
-                std::forward<Get>(g), std::forward<Set>(s));
-            return *this;
+            return property_impl(name, std::move(bind(g)), std::move(bind(s)));
         }
 
         // __call metamethod
@@ -95,26 +111,25 @@ namespace kath
             return *this;
         }
 
-    private:
-        void init_userdata()
+        // overload
+        template <typename ... Fs>
+        userdata_helper& overload(char const* name, Fs ... fs)
         {
-            // create metatable
-            // TODO ... exception handle
-            auto r = ::luaL_newmetatable(L, native_name_.c_str());
-
-            // set name as global
-            // TODO ... namespace 
-            stack_duplicate(L);
-            set_global(L, name_);
-
-            // __index meta method
-            set_table(L, "__index", &userdata_helper::metatable_index);
-            // __newindex meta method
-            set_table(L, "__newindex", &userdata_helper::metatable_newindex);
-            // __gc meta method
-            metatable_gc(L);
+            auto ol = kath::overload(std::move(bind(fs))...);
+            set_table(L, name, std::move(ol));
+            return *this;
         }
 
+    private:
+        template <typename Get, typename Set>
+        userdata_helper& property_impl(char const* name, Get&& get, Set&& set)
+        {
+            detail::property_helper<Get, Set>::apply(L, name, 
+                std::forward<Get>(get), std::forward<Set>(set));
+            return *this;
+        }
+
+        void init_userdata();
         inline static int metatable_index(lua_State* L);
         inline static int metatable_newindex(lua_State* L);
         inline static void metatable_gc(lua_State* L);
@@ -132,16 +147,24 @@ namespace kath
         return userdata_helper<T>{ L, name };
     }
 
-    template <typename Base, typename Derived>
-    inline static auto inherit_from(lua_State* L) -> std::enable_if_t<std::is_base_of_v<Base, Derived>>
+    template <typename T>
+    void userdata_helper<T>::init_userdata()
     {
-        stack_guard guard{ L };
+        // create metatable
+        // TODO ... exception handle
+        auto r = ::luaL_newmetatable(L, native_name_.c_str());
 
-        luaL_getmetatable(L, get_class_name<Derived>());
-        ::lua_createtable(L, 0, 2);
-        luaL_getmetatable(L, get_class_name<Base>());
-        set_field(L, "__index");
-        ::lua_setmetatable(L, -2);
+        // set name as global
+        // TODO ... namespace 
+        stack_duplicate(L);
+        set_global(L, name_);
+
+        // __index meta method
+        set_table(L, "__index", &userdata_helper::metatable_index);
+        // __newindex meta method
+        set_table(L, "__newindex", &userdata_helper::metatable_newindex);
+        // __gc meta method
+        metatable_gc(L);
     }
 
     template <typename T>
@@ -225,4 +248,17 @@ namespace kath
             });
         }
     }
+
+
+    //template <typename Base, typename Derived>
+    //inline static auto inherit_from(lua_State* L) -> std::enable_if_t<std::is_base_of_v<Base, Derived>>
+    //{
+    //    stack_guard guard{ L };
+    //
+    //    luaL_getmetatable(L, get_class_name<Derived>());
+    //    ::lua_createtable(L, 0, 2);
+    //    luaL_getmetatable(L, get_class_name<Base>());
+    //    set_field(L, "__index");
+    //    ::lua_setmetatable(L, -2);
+    //}
 }
