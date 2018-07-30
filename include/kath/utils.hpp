@@ -54,6 +54,16 @@ namespace kath
 
     template <typename ... Args>
     struct type_list {};
+
+    template <typename T, typename TypeList>
+    struct type_list_push_front;
+    template <typename T, typename ... Args>
+    struct type_list_push_front<T, type_list<Args...>>
+    {
+        using type = type_list<T, Args...>;
+    };
+    template <typename T, typename TypeList>
+    using type_list_push_front_t = typename type_list_push_front<T, TypeList>::type;
 }
 
 #ifndef KATH_MAKE_TYPE_LIST

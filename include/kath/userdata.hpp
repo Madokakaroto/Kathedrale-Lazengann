@@ -12,10 +12,19 @@ namespace kath
 
     namespace detail
     {
-        template <typename T, typename ... Args>
+        template <typename T, typename Arg>
         inline static auto create_constructors() noexcept
         {
-            return constructor_t<T>{};
+            return constructor(type_list_push_front_t<T, Arg>{});
+        }
+
+        template <typename T, typename Arg0, typename Arg1, typename ... Args>
+        inline static auto create_constructors() noexcept
+        {
+            return overload(
+                constructor(type_list_push_front_t<T, Arg0>{}),
+                constructor(type_list_push_front_t<T, Arg1>{}),
+                constructor(type_list_push_front_t<T, Args>{})...);
         }
 
         // property
@@ -72,16 +81,12 @@ namespace kath
             {
                 set_table(L, name, std::move(bind(t)));
             }
-            else if constexpr(std::is_member_object_pointer_v<RawT>)
+            else if constexpr(meta_or_v<std::is_pointer<RawT>,
+                std::is_member_object_pointer<RawT>>)
             {
                 this->property_impl(name,
                     std::move(bind_get(t)), 
                     std::move(bind_set(t)));
-            }
-            else if constexpr(std::is_pointer_v<RawT>)
-            {
-                // TODO ... for static data memeber
-
             }
             else 
             {

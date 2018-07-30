@@ -2,6 +2,9 @@
 
 struct player {
 public:
+
+    static int coef;
+
     int bullets;
     int speed;
 
@@ -54,6 +57,7 @@ private:
     int hp;
 };
 
+int player::coef = 0;
 
 BOOST_AUTO_TEST_CASE(userdata_bisc)
 {
@@ -64,6 +68,7 @@ BOOST_AUTO_TEST_CASE(userdata_bisc)
         member("boost", &player::boost).
         member("shoot", &player::shoot).
         member("speed", &player::speed).
+        member("coef", &player::coef).
         overload("update_statud", 
             static_cast<void(player::*)(int)>(&player::update_status), 
             static_cast<void(player::*)(int, int)>(&player::update_status)).

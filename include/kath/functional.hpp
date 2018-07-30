@@ -58,12 +58,30 @@ namespace kath
         };
     }
 
+    template <typename T>
+    inline static auto bind_get(T* pointer)
+    {
+        return [pointer]() -> T
+        {
+            return *pointer;
+        };
+    }
+
     template <typename T, typename C>
     inline static auto bind_set(T C::* pmd)
     {
         return [pmd](C* ptr, T const& v) -> void
         {
             ptr->*pmd = v;
+        };
+    }
+
+    template <typename T>
+    inline static auto bind_set(T* pointer)
+    {
+        return [pointer](T const& v) -> void
+        {
+            *pointer = v;
         };
     }
 }
@@ -145,6 +163,12 @@ namespace kath { namespace detail
         std::string result{};
         swallow_t{ (result += get_type_name<Args>())... };
         return result;
+    }
+
+    template <>
+    inline static std::string types2string<>()
+    {
+        return "v";
     }
 
     template <typename Tuple, size_t ... Is>
@@ -373,10 +397,14 @@ namespace kath
         std::map<std::string, std::function<int(lua_State* L)>> functions_;
     };
 
-    template <typename F, typename ... Fs>
-    inline static overload_functor overload(F&& f, Fs&& ... fs)
+    template <typename F0, typename F1, typename ... Fs>
+    inline static overload_functor overload(F0&& f0, F1&& f1, Fs&& ... fs)
     {
-        return overload_functor{ std::forward<F>(f), std::forward<Fs>(fs)... };
+        return overload_functor{ 
+            std::forward<F0>(f0), 
+            std::forward<F1>(f1), 
+            std::forward<Fs>(fs)... 
+        };
     }
 }
 
