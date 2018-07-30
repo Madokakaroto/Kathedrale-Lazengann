@@ -3,7 +3,13 @@
 namespace kath
 {
     template <typename T>
-    struct reflect_info {};
+    struct reflect_info 
+    {
+        static char const* name() noexcept
+        {
+            return typeid(T).name();
+        }
+    };
 }
 
 /* common macros */
@@ -209,7 +215,7 @@ namespace kath
     namespace reflect_detail
     {
         template <typename Arr, typename Tuple, typename F, size_t ... Is>
-        inline static auto visit_loop(Arr const& names, Tuple const& members, std::index_sequence<Is...>)
+        inline static auto visit_loop(Arr const& names, Tuple const& members, F const& func, std::index_sequence<Is...>)
         {
             swallow_t{
                 (func(names[Is], std::get<Is>(members), Is, names), true) ...

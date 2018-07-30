@@ -50,16 +50,16 @@ namespace kath
     }
 
     template <typename T, typename C>
-    inline static auto bind_field_get(T C::* pmd)
+    inline static auto bind_get(T C::* pmd)
     {
-        return [pmd](C* ptr) -> T const&
+        return [pmd](C* ptr) -> T&
         {
             return ptr->*pmd;
         };
     }
 
     template <typename T, typename C>
-    inline static auto bind_field_set(T C::* pmd)
+    inline static auto bind_set(T C::* pmd)
     {
         return [pmd](C* ptr, T const& v) -> void
         {
@@ -251,8 +251,7 @@ namespace kath
     public:
         int operator() (::lua_State* L) const
         {
-
-            return 1;
+            return 0;
         }
 
         static std::string signature_name()

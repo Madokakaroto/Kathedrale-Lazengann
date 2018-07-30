@@ -65,17 +65,17 @@ namespace kath
 #endif
 
 #ifndef KATH_ARGS
-#define KATH_ARGS KATH_MAKE_TYPE_LIST
+#define KATH_ARGS(...) kath::type_list<__VA_ARGS__>
 #endif
 
 // some useful interface
 namespace kath
 {
+    // TODO: remove class and struct
     template <typename T>
-    inline static char const* get_class_name() noexcept
+    inline static std::string get_class_name() noexcept
     {
-        using type = reflexpr(T);
-        return type::name().c_str();
+        return boost::core::demangle(typeid(std::remove_const_t<T>).name());
     }
 
     // TODO ... flatten the gap between lua and C++
@@ -98,15 +98,16 @@ namespace kath
         }
         else
         {
-            if constexpr(Safe)
-            {
-                return 'x';
-            }
-            else
-            {
-                using raw_type = std::remove_pointer_t<type>;
-                return get_class_name<raw_type>();
-            }
+            return 'x';
+            //if constexpr(Safe)
+            //{
+            //    
+            //}
+            //else
+            //{
+            //    using raw_type = std::remove_pointer_t<type>;
+            //    return get_class_name<raw_type>();
+            //}
         }
     }
 }

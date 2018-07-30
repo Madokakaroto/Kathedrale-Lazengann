@@ -1,29 +1,135 @@
 ﻿#pragma once
 
+#include <boost/core/demangle.hpp>
+
 namespace kath
 {
-    struct userdata_helper
+    template <typename T>
+    inline static auto neat_name() noexcept
+    {
+        return boost::core::demangle(typeid(T).name());
+    }
+
+    namespace detail
+    {
+        template <typename T, typename ... Args>
+        inline static auto create_constructors() noexcept
+        {
+            return constructor_t<T>{};
+        }
+
+        // property
+        template <typename Get, typename Set>
+        struct property_helper
+        {
+            // Get -> T(C*)
+            // Set -> void(C*, T)
+            using get_traits_t = callable_traits<Get>;
+            using set_traits_t = callable_traits<Set>;
+
+            static void apply(lua_State* L, char const* name, Get get, Set set)
+            {
+                // TODO ... check signature of Get and Set
+
+                // get field
+                if (fetch_field_as_table(L, "__get"))
+                {
+                    set_table(L, name, std::forward<Get>(get));
+                }
+
+                // set field
+                if (fetch_field_as_table(L, "__set"))
+                {
+                    set_table(L, name, std::forward<Set>(set));
+                }
+
+                stack_pop(L, 2);
+            }
+        };
+    }
+
+    template <typename T>
+    class userdata_helper
     {
     public:
-        template <typename T>
-        static void init_meta_method(lua_State * L);
+        userdata_helper(lua_State* L, char const* name = nullptr)
+            : L(L)
+            , native_name_(std::move(neat_name<T>()))
+            , name_(name == nullptr ? native_name_ : name)
+        {
+            assert(this->L);
+            init_userdata();
+        }
+
+        template <typename T, typename RawT = std::remove_reference_t<T>>
+        userdata_helper& member(char const* name, T&& t)
+        {
+            if constexpr(std::is_member_function_pointer_v<RawT>)
+            {
+                set_table(L, name, std::move(bind(t)));
+            }
+            else if constexpr(std::is_member_object_pointer_v<RawT>)
+            {
+                this->property(name, 
+                    std::move(bind_get(t)), 
+                    std::move(bind_set(t)));
+            }
+            return *this;
+        }
+        
+        template <typename Get, typename Set>
+        userdata_helper& property(char const* name, Get&& g, Set&& s)
+        {
+            detail::property_helper<Get, Set>::apply(L, name,
+                std::forward<Get>(g), std::forward<Set>(s));
+            return *this;
+        }
+
+        // __call metamethod
+        template <typename ... Args>
+        userdata_helper& constructors()
+        {
+            static_assert(sizeof...(Args) >= 1);
+            auto ctors = detail::create_constructors<T, Args...>();
+            set_table(L, "__call", std::move(ctors));
+            return *this;
+        }
+
     private:
-        inline static int __index(lua_State* L);
-        inline static int __newindex(lua_State* L);
+        void init_userdata()
+        {
+            // create metatable
+            // TODO ... exception handle
+            auto r = ::luaL_newmetatable(L, native_name_.c_str());
+
+            // set name as global
+            // TODO ... namespace 
+            stack_duplicate(L);
+            set_global(L, name_);
+
+            // __index meta method
+            set_table(L, "__index", &userdata_helper::metatable_index);
+            // __newindex meta method
+            set_table(L, "__newindex", &userdata_helper::metatable_newindex);
+            // __gc meta method
+            metatable_gc(L);
+        }
+
+        inline static int metatable_index(lua_State* L);
+        inline static int metatable_newindex(lua_State* L);
+        inline static void metatable_gc(lua_State* L);
+
+    private:
+        lua_State*          L;
+        std::string         native_name_;
+        std::string         name_;
     };
 
     template <typename T>
-    inline static void new_class(lua_State* L)
+    inline static auto new_class(lua_State* L, char const* name = nullptr)
     {
         static_assert(negation_v<std::is_const<T>>);
-
-        using type = reflexpr(T);
-
-        stack_guard guard{ L };
-        if (::luaL_newmetatable(L, type::name() == 0))       // stack top is the metatable
-            return;
-
-        userdata_helper::init_meta_method<T>();
+        return userdata_helper<T>{ L, name };
     }
 
     template <typename Base, typename Derived>
@@ -38,7 +144,8 @@ namespace kath
         ::lua_setmetatable(L, -2);
     }
 
-    int userdata_helper::__index(lua_State* L)
+    template <typename T>
+    int userdata_helper<T>::metatable_index(lua_State* L)
     {
         constexpr int obj_idx = 1;
         constexpr int key_idx = 2;
@@ -63,7 +170,8 @@ namespace kath
         return lua_pcall(L, 1, 1, 0);
     }
 
-    int userdata_helper::__newindex(lua_State* L)
+    template <typename T>
+    int userdata_helper<T>::metatable_newindex(lua_State* L)
     {
         constexpr int obj_idx = 1;
         constexpr int key_idx = 2;
@@ -93,15 +201,8 @@ namespace kath
     }
 
     template <typename T>
-    void userdata_helper::init_meta_method(lua_State* L)
+    void userdata_helper<T>::metatable_gc(lua_State* L)
     {
-        // __index
-        set_table(L, "__index", userdata_helper::__index);
-
-        // __newindex
-        set_table(L, "__newindex", userdata_helper::__newindex);
-
-        // __gc
         if constexpr(is_userdata_reference_type_v<T>)
         {
             set_table(L, "__gc", [](lua_State* L) -> int
@@ -125,7 +226,3 @@ namespace kath
         }
     }
 }
-
-
-
-

@@ -122,6 +122,34 @@ namespace kath
     }
 }
 
+// other op
+namespace kath
+{
+    template <typename Key>
+    inline static bool fetch_field_as_table(lua_State* L, Key const& key, int index = -1)
+    {
+        auto get_type = fetch_field(L, key, index);
+        if (get_type == basic_type::table)
+        {
+            return true;
+        }
+
+        // pop nil
+        stack_pop(L);
+
+        if (get_type == basic_type::nil)
+        {
+            lua_createtable(L, 0, 1);
+            stack_duplicate(L);
+            set_field(L, key, index - 1);
+            return true;
+        }
+
+        // TODO ... exception
+        return false;
+    }
+}
+
 // stack-op implement implement
 namespace kath
 {

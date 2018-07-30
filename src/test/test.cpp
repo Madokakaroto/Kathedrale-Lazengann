@@ -35,3 +35,4 @@ auto L = init_lua_low_level(); { kath::stack_guard guard{ L };
 
 #include "kath_mpl_test.hpp"
 #include "kath_lowlevel_test.hpp"
+#include "kath_userdata_test.hpp"

@@ -22,12 +22,12 @@ BOOST_AUTO_TEST_CASE(BooleanMetaFunction)
     BOOST_CHECK((std::is_same_v<std::invoke_result_t<foo, void*>, int>));
 }
 
-BOOST_AUTO_TEST_CASE(testest)
-{
-    using namespace std::complex_literals;
-
-    std::complex<int32_t> a, b;
-
-    auto quotient = (a * std::conj(b)) / std::norm(b);
-    auto remainder = a - b * quotient;
-}
+//BOOST_AUTO_TEST_CASE(testest)
+//{
+//    using namespace std::complex_literals;
+//
+//    std::complex<int32_t> a, b;
+//
+//    auto quotient = (a * std::conj(b)) / std::norm(b);
+//    auto remainder = a - b * quotient;
+//}

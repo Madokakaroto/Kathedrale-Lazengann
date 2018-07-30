@@ -329,7 +329,7 @@ namespace kath
     template <typename T>
     using is_userdata_value_type = meta_and<
         userdata_category<T>,
-        userdata_value_category<T>,
+        //userdata_value_category<T>,
         negation<is_shared_type<T>>
     >;
     template <typename T>

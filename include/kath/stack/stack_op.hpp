@@ -127,7 +127,7 @@ namespace kath
         if constexpr(is_userdata_value_type_v<RawT>) 
         {
             detail::stack_push_userdata(L, std::forward<T>(t));
-            ::luaL_setmetatable(L, get_class_name<T>());
+            ::luaL_setmetatable(L, get_class_name<T>().c_str());
         }
         else
         {
@@ -140,7 +140,7 @@ namespace kath
     // TODO ... align with stack_get and stack_check
     template <typename T>
     inline static auto stack_push(lua_State* L, T* ptr) 
-        -> disable_if<meta_or_v<is_c_string<T*>, std::is_function<T>>>
+        -> disable_if_t<meta_or_v<is_c_string<T*>, std::is_function<T>>>
     {
         stack_push(L, *ptr);
     }
@@ -323,7 +323,7 @@ namespace kath
     {
         if constexpr(is_userdata_type_v<RawT>)
         {
-            ::luaL_checkudata(L, arg, get_class_name<RawT>());
+            ::luaL_checkudata(L, arg, get_class_name<RawT>().c_str());
             return stack_get<T>(L, arg);
         }
         else
