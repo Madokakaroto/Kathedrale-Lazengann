@@ -75,7 +75,7 @@ namespace kath
 #endif
 
 #ifndef KATH_ARGS
-#define KATH_ARGS(...) kath::type_list<__VA_ARGS__>
+#define KATH_ARGS KATH_MAKE_TYPE_LIST
 #endif
 
 // some useful interface

@@ -312,7 +312,7 @@ namespace kath
     inline static auto stack_check(lua_State* L, int arg = 1)
         -> std::enable_if_t<is_userdata_type_v<T>, T&>
     {
-        ::luaL_checkudata(L, arg, get_class_name<T>());
+        ::luaL_checkudata(L, arg, get_class_name<T>().c_str());
         return stack_get<T>(L, arg);
     }
 

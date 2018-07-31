@@ -108,11 +108,13 @@ namespace kath
 
         // __call metamethod
         template <typename ... Args>
-        userdata_helper& constructors()
+        userdata_helper& constructors(Args ...)
         {
             static_assert(sizeof...(Args) >= 1);
             auto ctors = detail::create_constructors<T, Args...>();
+            lua_createtable(L, 0, 1);
             set_table(L, "__call", std::move(ctors));
+            lua_setmetatable(L, -2);
             return *this;
         }
 
@@ -165,9 +167,9 @@ namespace kath
         set_global(L, name_);
 
         // __index meta method
-        set_table(L, "__index", &userdata_helper::metatable_index);
+        set_table(L, "__index", userdata_helper::metatable_index);
         // __newindex meta method
-        set_table(L, "__newindex", &userdata_helper::metatable_newindex);
+        set_table(L, "__newindex", userdata_helper::metatable_newindex);
         // __gc meta method
         metatable_gc(L);
     }
@@ -243,7 +245,7 @@ namespace kath
             });
         }
         else if constexpr(std::conjunction_v<is_userdata_value_type<T>, 
-            negation<std::is_trivially_default_constructible<T>>>)
+            negation<std::is_trivially_destructible<T>>>)
         {
             set_table(L, "__gc", [](lua_State* L) -> int {
                 auto ptr = stack_get<T*>(L, 1);

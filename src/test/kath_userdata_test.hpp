@@ -1,78 +1,99 @@
 ﻿#pragma once
 
-struct player {
-public:
-
-    static int coef;
-
-    int bullets;
-    int speed;
-
-    player()
-        : player(3, 100) {
-
-    }
-
-    player(int ammo)
-        : player(ammo, 100) {
-
-    }
-
-    player(int ammo, int hitpoints)
-        : bullets(ammo), hp(hitpoints) {
-
-    }
-
-    void boost() {
-        speed += 10;
-    }
-
-    bool shoot() {
-        if (bullets < 1)
-            return false;
-        --bullets;
-        return true;
-    }
-
-    void update_status(int ammo)
+namespace userdata_test
+{
+    class vector3
     {
-        bullets = ammo;
-    }
+    public:
+        vector3()
+            : vector3(0)
+        {}
 
-    void update_status(int ammo, int hitpoints)
-    {
-        bullets = ammo;
-        hp = hitpoints;
-    }
+        explicit vector3(float u) 
+            : vector3(u, u, u)
+        {}
 
-    void set_hp(int value) {
-        hp = value;
-    }
+        vector3(float x, float y, float z)
+            : x_(x)
+            , y_(y)
+            , z_(z)
+        {}
 
-    int get_hp() const {
-        return hp;
-    }
+        float get_x() const
+        {
+            return x_;
+        }
 
-private:
-    int hp;
-};
+        float set_x() const
+        {
+            return x_;
+        }
 
-int player::coef = 0;
+        float get_y() const
+        {
+            return y_;
+        }
+
+        float set_y() const
+        {
+            return y_;
+        }
+
+        float get_z() const
+        {
+            return z_;
+        }
+
+        float set_z() const
+        {
+            return z_;
+        }
+
+        float magnitude() const
+        {
+            return x_ * x_ + y_ * y_ + z_ * z_;
+        }
+
+        vector3 cross(vector3 const& v) const
+        {
+            return vector3
+            {
+                y_ * v.z_ - z_ * v.y_,
+                z_ * v.x_ - x_ * v.z_,
+                x_ * v.y_ - y_ * v.x_
+            };
+        }
+
+    private:
+        float x_;
+        float y_;
+        float z_;
+    };
+}
 
 BOOST_AUTO_TEST_CASE(userdata_bisc)
 {
     KATH_LUA_LOWLEVEL_BEGIN;
 
-    kath::new_class<player>(L, "player").
-        constructors<KATH_ARGS(), KATH_ARGS(int), KATH_ARGS(int, int)>().
-        member("boost", &player::boost).
-        member("shoot", &player::shoot).
-        member("speed", &player::speed).
-        member("coef", &player::coef).
-        overload("update_statud", 
-            static_cast<void(player::*)(int)>(&player::update_status), 
-            static_cast<void(player::*)(int, int)>(&player::update_status)).
-        property("hs", &player::get_hp, &player::set_hp);
+    using userdata_test::vector3;
+
+    kath::new_class<vector3>(L, "vector3").
+        constructors(KATH_ARGS(float), KATH_ARGS(float, float, float)).
+        member("magnitude", &vector3::magnitude).
+        member("cross", &vector3::cross).
+        property("X", &vector3::get_x, &vector3::set_x).
+        property("Y", &vector3::get_y, &vector3::set_y).
+        property("Z", &vector3::get_z, &vector3::set_z);
+
+
+    BOOST_CHECK(do_script_low_level(L, R"(
+        a = vector3(3.0)
+
+        for k,v in pairs(getmetatable(a)) do
+            print(k, v)
+        end
+    )"));
+
 
     KATH_LUA_LOWLEVEL_END;
 }

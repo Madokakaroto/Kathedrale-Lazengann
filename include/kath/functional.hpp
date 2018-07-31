@@ -180,15 +180,16 @@ namespace kath { namespace detail
     template <typename T, typename Tuple, size_t ... Is>
     inline static void construct_new_object(lua_State* L, std::index_sequence<Is...>)
     {
-        if constexpr(is_userdata_type_v<T>)
+        if constexpr(is_userdata_value_type_v<T>)
         {
             auto emplace_address = ::lua_newuserdata(L, sizeof(T));
-            new (emplace_address) T{ stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 1)... };
+            new (emplace_address) T{ stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 2)... };
+            luaL_setmetatable(L, get_class_name<T>().c_str());
         }
         else
         {
             static_assert(is_userdata_reference_type_v<T>);
-            auto ptr = std::make_shared<T>(stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 1)...);
+            auto ptr = std::make_shared<T>(stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 2)...);
             stack_push(std::move(ptr));
         }
     }
@@ -275,7 +276,9 @@ namespace kath
     public:
         int operator() (::lua_State* L) const
         {
-            return 0;
+            detail::construct_new_object<T, std::tuple<Args...>>(L,
+                std::make_index_sequence<sizeof...(Args)>{});
+            return 1;
         }
 
         static std::string signature_name()
@@ -360,7 +363,7 @@ namespace kath
         {
             std::string overload_name{};
             auto count = ::lua_gettop(L);
-            for(auto loop = 1; loop <= count; ++loop)
+            for(auto loop = 2; loop <= count; ++loop)
             {
                 overload_name += stack_type_name(L, loop);
             }

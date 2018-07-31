@@ -1,4 +1,5 @@
 ﻿#include <kath.hpp>
+#include <iostream>
 
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE "kath.test"
@@ -20,6 +21,7 @@ namespace
         auto error = ::luaL_loadstring(L, script.c_str()) || ::lua_pcall(L, 0, 0, 0);
         if (error)
         {
+            std::cout << lua_tostring(L, -1) << std::endl;
             lua_pop(L, 1);
             return false;
         }
