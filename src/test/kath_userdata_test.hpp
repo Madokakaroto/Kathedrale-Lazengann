@@ -24,9 +24,9 @@ namespace userdata_test
             return x_;
         }
 
-        float set_x() const
+        void set_x(float x)
         {
-            return x_;
+            x_ = x;
         }
 
         float get_y() const
@@ -34,9 +34,9 @@ namespace userdata_test
             return y_;
         }
 
-        float set_y() const
+        void set_y(float y)
         {
-            return y_;
+            y_ = y;
         }
 
         float get_z() const
@@ -44,9 +44,9 @@ namespace userdata_test
             return z_;
         }
 
-        float set_z() const
+        void set_z(float z)
         {
-            return z_;
+            z_ = z;
         }
 
         float magnitude() const
@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(userdata_bisc)
     using userdata_test::vector3;
 
     kath::new_class<vector3>(L, "vector3").
-        constructors(KATH_ARGS(float), KATH_ARGS(float, float, float)).
+        constructors(KATH_ARGS(), KATH_ARGS(float), KATH_ARGS(float, float, float)).
         member("magnitude", &vector3::magnitude).
         member("cross", &vector3::cross).
         property("X", &vector3::get_x, &vector3::set_x).
@@ -87,13 +87,29 @@ BOOST_AUTO_TEST_CASE(userdata_bisc)
 
 
     BOOST_CHECK(do_script_low_level(L, R"(
-        a = vector3(3.0)
-
-        for k,v in pairs(getmetatable(a)) do
-            print(k, v)
+        function print_table(table)
+            for k,v in pairs(table) do
+                print(k, v)
+            end
         end
-    )"));
 
+        a = vector3()
+        meta_a = getmetatable(a)
+        print_table(meta_a)
+        --print_table(meta_a.__set)
+        --print_table(meta_a.__get)
+
+        b = vector3(1.0)
+        magnitude = b:magnitude()
+        print(magnitude)
+        print(b.X, b.Y, b.Z)
+        b.X = 2.0
+        b.Y = 2.0
+        b.Z = 3.0
+        magnitude = b:magnitude()
+        print(magnitude)
+        print(b.X, b.Y, b.Z)
+    )"));
 
     KATH_LUA_LOWLEVEL_END;
 }

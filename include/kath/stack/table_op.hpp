@@ -141,7 +141,7 @@ namespace kath
         {
             lua_createtable(L, 0, 1);
             stack_duplicate(L);
-            set_field(L, key, index - 1);
+            set_field(L, key, index - 2);
             return true;
         }
 

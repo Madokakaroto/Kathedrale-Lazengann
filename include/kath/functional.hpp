@@ -43,6 +43,30 @@ namespace kath
 // bind
 namespace kath
 {
+    namespace detail
+    {
+        template <typename T, typename = void>
+        struct bind_property_type
+        {
+            using type = T;
+        };
+
+        template <typename T>
+        struct bind_property_type<T, std::enable_if_t<is_userdata_type_v<T>>>
+        {
+            using type = std::add_lvalue_reference_t<T>;
+        };
+
+        template <typename T>
+        struct bind_property_type<T, std::enable_if_t<is_manipulated_type_v<T>>>
+        {
+            using type = typename ext::manipulate_type<T>::type;
+        };
+    }
+
+    template <typename T>
+    using bind_property_type_t = typename detail::bind_property_type<T>::type;
+
     template <typename Func, typename ... Args>
     inline static auto bind(Func&& f, Args&& ... args)
     {
@@ -52,7 +76,7 @@ namespace kath
     template <typename T, typename C>
     inline static auto bind_get(T C::* pmd)
     {
-        return [pmd](C* ptr) -> T
+        return [pmd](C* ptr) -> bind_property_type_t<T>
         {
             return ptr->*pmd;
         };
@@ -61,7 +85,7 @@ namespace kath
     template <typename T>
     inline static auto bind_get(T* pointer)
     {
-        return [pointer]() -> T
+        return [pointer]() -> bind_property_type_t<T>
         {
             return *pointer;
         };
@@ -168,7 +192,7 @@ namespace kath { namespace detail
     template <>
     inline static std::string types2string<>()
     {
-        return "v";
+        return "";
     }
 
     template <typename Tuple, size_t ... Is>

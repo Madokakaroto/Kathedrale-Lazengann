@@ -31,7 +31,6 @@ namespace kath
         // Get Set :
         // 1. all pointer to member
         // 2. result of bind_get and bind_set respectively
-
         template <typename Get, typename Set>
         struct property_helper
         {
@@ -51,7 +50,7 @@ namespace kath
                 }
 
                 // set field
-                if (fetch_field_as_table(L, "__set"))
+                if (fetch_field_as_table(L, "__set", -2))
                 {
                     set_table(L, name, std::forward<Set>(set));
                 }
@@ -112,9 +111,10 @@ namespace kath
         {
             static_assert(sizeof...(Args) >= 1);
             auto ctors = detail::create_constructors<T, Args...>();
-            lua_createtable(L, 0, 1);
+            stack_guard guard{ L };
+            // TODO ... error handling
+            lua_getmetatable(L, -1);
             set_table(L, "__call", std::move(ctors));
-            lua_setmetatable(L, -2);
             return *this;
         }
 
@@ -158,8 +158,12 @@ namespace kath
     void userdata_helper<T>::init_userdata()
     {
         // create metatable
-        // TODO ... exception handle
-        auto r = ::luaL_newmetatable(L, native_name_.c_str());
+        luaL_newmetatable(L, native_name_.c_str());
+        
+        // create metatable for metatable
+        // call semantics and inheritance
+        lua_createtable(L, 0, 1);
+        lua_setmetatable(L, -2);
 
         // set name as global
         // TODO ... namespace 
@@ -182,22 +186,34 @@ namespace kath
 
         // push metatable to stack
         lua_getmetatable(L, obj_idx);
-
-        // get metatable.key
-        stack_duplicate(L, key_idx);
-        lua_gettable(L, -2);
-        if (lua_type(L, -1) != LUA_TNIL)
-            return 1;
-
+        {
+            stack_guard guard{ L };
+            // get metatable.key
+            stack_duplicate(L, key_idx);
+            lua_gettable(L, -2);
+            if (lua_type(L, -1) != LUA_TNIL)
+            {
+                guard.dismiss();
+                return 1;
+            }
+        }
+        
         // get by calling metatable.__set.key(obj)
         fetch_field(L, "__get");
-        if (lua_type(L, -1) != LUA_TFUNCTION)
+        if (lua_type(L, -1) != LUA_TTABLE)
         {
             stack_push(L);
             return 1;
         }
+
+        // get function
+        stack_duplicate(L, key_idx);
+        lua_gettable(L, -2);
+        // get object
         stack_duplicate(L, obj_idx);
-        return lua_pcall(L, 1, 1, 0);
+        // call function
+        lua_pcall(L, 1, 1, 0);              // TODO ... error handling
+        return 1;
     }
 
     template <typename T>
@@ -217,6 +233,7 @@ namespace kath
             return luaL_error(L, "This type of userdata is not capable of properties SET OP.");
         }
 
+        // get function
         stack_duplicate(L, key_idx);
         lua_gettable(L, -2);
         if (lua_type(L, -1) != LUA_TFUNCTION)
@@ -225,9 +242,12 @@ namespace kath
             return luaL_error(L, "This type of userdata dosen`t have the %s field.", key);
         }
 
+        // get object and param
         stack_duplicate(L, obj_idx);
         stack_duplicate(L, val_idx);
-        return lua_pcall(L, 2, 0, 0);
+        // call function
+        lua_pcall(L, 2, 0, 0);              // TODO ... error handling
+        return 0;
     }
 
     template <typename T>
@@ -255,7 +275,6 @@ namespace kath
             });
         }
     }
-
 
     //template <typename Base, typename Derived>
     //inline static auto inherit_from(lua_State* L) -> std::enable_if_t<std::is_base_of_v<Base, Derived>>

@@ -7,11 +7,13 @@ namespace kath
         stack_guard(lua_State* L)
             : L_(L)
             , top_(::lua_gettop(L))
+            , dismiss_(false)
         {}
 
         ~stack_guard()
         {
-            ::lua_settop(L_, top_);
+            if(!dismiss_)
+                ::lua_settop(L_, top_);
         }
 
         stack_guard(stack_guard const&) = delete;
@@ -19,9 +21,12 @@ namespace kath
 
         stack_guard& operator=(stack_guard const&) = delete;
         stack_guard& operator=(stack_guard&&) = delete;
+
+        void dismiss() noexcept { dismiss_ = true; }
     
         lua_State*  L_;
         int         top_;
+        bool        dismiss_;
     };
 
     template <typename ... Args>
