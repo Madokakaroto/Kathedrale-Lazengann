@@ -1,15 +1,7 @@
 ﻿#pragma once
 
-#include <boost/core/demangle.hpp>
-
 namespace kath
 {
-    template <typename T>
-    inline static auto neat_name() noexcept
-    {
-        return boost::core::demangle(typeid(T).name());
-    }
-
     namespace detail
     {
         template <typename T, typename Arg>
@@ -66,31 +58,31 @@ namespace kath
     public:
         userdata_helper(lua_State* L, char const* name = nullptr)
             : L(L)
-            , native_name_(std::move(neat_name<T>()))
+            , native_name_(std::move(get_class_name<T>()))
             , name_(name == nullptr ? native_name_ : name)
         {
             assert(this->L);
             init_userdata();
         }
 
-        template <typename T, typename RawT = std::remove_reference_t<T>>
-        userdata_helper& member(char const* name, T&& t)
+        template <typename Member, typename RawM = std::remove_reference_t<Member>>
+        userdata_helper& member(char const* name, Member&& m)
         {
-            if constexpr(std::is_member_function_pointer_v<RawT>)
+            if constexpr(std::is_member_function_pointer_v<RawM>)
             {
-                set_table(L, name, std::move(bind(t)));
+                set_table(L, name, std::move(bind(m)));
             }
-            else if constexpr(meta_or_v<std::is_pointer<RawT>,
-                std::is_member_object_pointer<RawT>>)
+            else if constexpr(meta_or_v<std::is_pointer<RawM>,
+                std::is_member_object_pointer<RawM>>)
             {
                 this->property_impl(name,
-                    std::move(bind_get(t)), 
-                    std::move(bind_set(t)));
+                    std::move(bind_get(m)),
+                    std::move(bind_set(m)));
             }
             else 
             {
-                static_assert(is_callable_v<RawT>, "Unsupported member type!");
-                set_table(L, name, std::forward<T>(t));
+                static_assert(is_callable_v<RawM>, "Unsupported member type!");
+                set_table(L, name, std::forward<Member>(m));
             }
             return *this;
         }

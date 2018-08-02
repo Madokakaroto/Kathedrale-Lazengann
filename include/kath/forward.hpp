@@ -14,6 +14,7 @@
 #include <memory>
 #include <atomic>
 #include <boost/preprocessor.hpp>
+#include <boost/core/demangle.hpp>
 
 namespace kath
 {

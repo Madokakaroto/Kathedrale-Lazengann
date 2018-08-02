@@ -190,7 +190,7 @@ namespace kath { namespace detail
     }
 
     template <>
-    inline static std::string types2string<>()
+    inline std::string types2string<>()
     {
         return "";
     }
