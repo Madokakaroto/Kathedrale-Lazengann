@@ -69,9 +69,23 @@ namespace userdata_test
         float y_;
         float z_;
     };
+
+    class player : public std::enable_shared_from_this<player>
+    {
+    public:
+        player()
+        {
+        }
+
+    private:
+        int     hp = 0;
+        int     mp = 0;
+        int     sp = 0;
+        int     exp = 0;
+    };
 }
 
-BOOST_AUTO_TEST_CASE(userdata_bisc)
+BOOST_AUTO_TEST_CASE(userdata_basic)
 {
     KATH_LUA_LOWLEVEL_BEGIN;
 
@@ -112,4 +126,21 @@ BOOST_AUTO_TEST_CASE(userdata_bisc)
     )"));
 
     KATH_LUA_LOWLEVEL_END;
+}
+
+BOOST_AUTO_TEST_CASE(userdata_shared_ptr)
+{
+    KATH_LUA_LOWLEVEL_BEGIN;
+
+    using userdata_test::player;
+    kath::new_class<player>(L, "player")
+        .constructors(KATH_ARGS());
+
+    auto p1 = std::make_shared<player>();
+
+    kath::stack_push(L, p1.get());
+    kath::stack_push(L, p1);
+    kath::stack_push(L, std::addressof(p1));
+    kath::stack_push(L, *p1);
+    KATH_LUA_LOWLEVEL_END
 }

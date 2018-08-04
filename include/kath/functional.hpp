@@ -214,7 +214,7 @@ namespace kath { namespace detail
         {
             static_assert(is_userdata_reference_type_v<T>);
             auto ptr = std::make_shared<T>(stack_check<std::tuple_element_t<Is, Tuple>>(L, Is + 2)...);
-            stack_push(std::move(ptr));
+            stack_push(L, std::move(ptr));
         }
     }
 

@@ -212,4 +212,40 @@ namespace kath { namespace ext
     };
 
     // extension for shared_ptr
+    template <typename T>
+    struct manipulate_type<T, std::enable_if_t<is_shared_ptr_v<T>>>
+    {
+        static constexpr bool value = true;
+        using type = T;
+        using element_type = typename T::element_type;
+
+        template <typename P>
+        static auto stack_push(lua_State* L, P&& value) 
+            -> std::enable_if_t<std::is_same_v<std::remove_cv_t<std::remove_reference_t<P>>, type>>
+        {
+            detail::stack_push_userdata(L, std::forward<P>(value));
+            luaL_setmetatable(L, get_class_name<element_type>().c_str());
+        }
+
+        static type* stack_get_ptr(lua_State* L, int index = -1)
+        {
+            return detail::stack_get_value_userdata<type>(L, index);
+        }
+
+        static type& stack_get(lua_State* L, int index = -1)
+        {
+            return *stack_get_ptr(L, index);
+        }
+
+        static type* stack_check_ptr(lua_State* L, int index = -1)
+        {
+            luaL_checkudata(L, index, get_class_name<element_type>().c_str());
+            return stack_get_ptr(L, index);
+        }
+
+        static type& stack_check(lua_State* L, int index = -1)
+        {
+            return *stack_check_ptr();
+        }
+    };
 } }

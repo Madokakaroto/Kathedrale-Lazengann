@@ -254,7 +254,6 @@ namespace kath
         }
         else
         {
-            // TODO ... stack_get_ptr check at SFINAE
             static_assert(is_manipulated_type_v<RawT>);
             return ext::manipulate_type<RawT>::stack_get_ptr(L, index);
         }

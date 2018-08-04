@@ -207,7 +207,13 @@ namespace kath
         decltype(std::declval<T>().get())
     >> : std::true_type {};
     template <typename T>
-    static constexpr bool is_smart_pointer_v = is_smart_pointer<T>::value;
+    inline constexpr bool is_smart_pointer_v = is_smart_pointer<T>::value;
+
+    // is shared pointer
+    template <typename T>
+    using is_shared_ptr = is_instance_of<T, std::shared_ptr>;
+    template <typename T>
+    inline constexpr bool is_shared_ptr_v = is_shared_ptr<T>::value;
 }
 
 // kaht type traits
