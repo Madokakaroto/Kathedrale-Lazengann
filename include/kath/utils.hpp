@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "detail/demangle.hpp"
+
 namespace kath
 {
     struct stack_guard
@@ -88,9 +90,10 @@ namespace kath
 {
     // TODO: remove class and struct
     template <typename T>
-    inline static std::string get_class_name() noexcept
+    inline static std::string const& get_class_name() noexcept
     {
-        return boost::core::demangle(typeid(std::remove_const_t<T>).name());
+        static std::string const name = detail::demangle<T>();
+        return name;
     }
 
     // TODO ... flatten the gap between lua and C++

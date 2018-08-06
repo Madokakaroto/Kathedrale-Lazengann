@@ -13,8 +13,11 @@
 #include <tuple>
 #include <memory>
 #include <atomic>
+#include <numeric>
+
 #include <boost/preprocessor.hpp>
 #include <boost/core/demangle.hpp>
+#include <boost/type_index.hpp>
 
 namespace kath
 {

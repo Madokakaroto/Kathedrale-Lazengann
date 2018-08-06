@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-namespace userdata_test
+namespace
 {
     class vector3
     {
@@ -85,11 +85,19 @@ namespace userdata_test
     };
 }
 
+BOOST_AUTO_TEST_CASE(userdata_name)
+{
+    //using userdata_test::vector3;
+    //using userdata_test::player;
+
+    auto name_result = boost::core::demangle(typeid(vector3).name());
+}
+
 BOOST_AUTO_TEST_CASE(userdata_basic)
 {
     KATH_LUA_LOWLEVEL_BEGIN;
 
-    using userdata_test::vector3;
+    //using userdata_test::vector3;
 
     kath::new_class<vector3>(L, "vector3").
         constructors(KATH_ARGS(), KATH_ARGS(float), KATH_ARGS(float, float, float)).
@@ -132,7 +140,7 @@ BOOST_AUTO_TEST_CASE(userdata_shared_ptr)
 {
     KATH_LUA_LOWLEVEL_BEGIN;
 
-    using userdata_test::player;
+    //using userdata_test::player;
     kath::new_class<player>(L, "player")
         .constructors(KATH_ARGS());
 
